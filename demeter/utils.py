@@ -71,7 +71,7 @@ def calculate_weighted_average_stddev(p5_rasters, p95_rasters, weights):
         standard_deviation = (p5 - p95) / (quantile * 2)
         variance_rasters.append(standard_deviation**2)
 
-    stacked_variance = numpy.stack(variance_rasters)
+    stacked_variance = numpy.ma.stack(variance_rasters)
     weighted_variance = numpy.average(
         stacked_variance, axis=0, weights=(numpy.array(weights) ** 2)
     )
