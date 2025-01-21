@@ -104,12 +104,16 @@ def fetch_and_merge_rasters(
     with TemporaryDirectory() as tmpdir:
         # Extract rasters and sidecar .vat.dbf files to a temporary directory:
         raster_paths = []
+        all_rasters_have_sidecar_dbf = True
         for archive_path in downloaded_archive_paths:
             with ZipFile(archive_path) as zip_archive:
                 raster_path = _find_raster_path_in_archive(zip_archive, raster_filename)
                 print(f"Extracting {raster_path}")
                 raster_paths.append(zip_archive.extract(raster_path, tmpdir))
-                zip_archive.extract(f"{raster_path}.vat.dbf", tmpdir)
+                try:
+                    zip_archive.extract(f"{raster_path}.vat.dbf", tmpdir)
+                except KeyError:
+                    all_rasters_have_sidecar_dbf = False
 
         counts: dict[int, int] = defaultdict(int)
 
@@ -206,7 +210,7 @@ def fetch_and_merge_rasters(
                 # Overwrite the raster with the mapped pixels:
                 with rasterio.open(raster_path, "w", **profile) as dst:
                     dst.write(mapped_pixels, 1, window=window)
-        else:
+        elif all_rasters_have_sidecar_dbf:
             for raster_path in raster_paths:
                 with DBF(f"{raster_path}.vat.dbf") as dbf:
                     for record in dbf:
@@ -347,4 +351,7 @@ def _extract_value_and_count_from_dbf_record(record) -> tuple[int, int]:
     except KeyError:
         count = record["Count"]
 
-    return int(value), int(count)
+    # USGS DBF files sometimes encode values in scientific notation, like this:
+    # b' 3.63000000000e+002'
+    # To parse these correctly, decode as float first, then coerce to int:
+    return int(float(value)), int(float(count))
