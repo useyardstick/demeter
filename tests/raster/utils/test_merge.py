@@ -317,11 +317,13 @@ def test_merge_overlapping_rasters(top_left_raster, bottom_right_raster):
 
 
 def _save_rasters(tmp_path, arrays, nodata):
+    raster_paths = []
     for index, array in enumerate(arrays):
+        path = str(tmp_path / f"raster_{index}.tif")
         height, width = array.shape
         with rasterio.open(
-            tmp_path / f"raster_{index}.tif",
-            "w",
+            path,
+            mode="w",
             count=1,
             height=height,
             width=width,
@@ -332,4 +334,6 @@ def _save_rasters(tmp_path, arrays, nodata):
         ) as dst:
             dst.write(array, indexes=1)
 
-    return list(tmp_path.glob("*.tif"))
+        raster_paths.append(path)
+
+    return raster_paths
