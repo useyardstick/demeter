@@ -35,15 +35,17 @@ def merge_and_crop_rasters(sources, crop_to=None) -> Raster:
 
 
 def _merge_rasters(sources, **kwargs) -> Raster:
-    # TODO: Check that dataset grids line up perfectly. If not, check that
-    # merging doesn't cause resampling artifacts.
     # FIXME: merging datasets that are very far apart uses a huge amount of
     # memory, even if the data is very sparse. I think this is because numpy
     # arrays allocate memory for every pixel. Find a way to mitigate.
     print("Merging rasters")
 
-    # USGS elevation tiles overlap their neighboring tiles by 6 pixels. Most of
-    # the overlapping data is the same, but neighboring tiles sometimes have
-    # different data in the overlapping portion of the boundary.
-    # TODO: figure out how to handle this.
-    return merge(sources, method=check_for_overlapping_pixels, **kwargs)
+    # USGS elevation tiles overlap their neighboring tiles by 6 pixels. The
+    # data in this overlapping region should be the same for both tiles. If
+    # not, log a warning.
+    return merge(
+        sources,
+        method=check_for_overlapping_pixels,
+        allow_resampling=False,
+        **kwargs,
+    )

@@ -27,7 +27,7 @@ which is lossy.
 import os
 import shutil
 from collections import defaultdict
-from collections.abc import Callable, Collection, Iterable, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from itertools import groupby
@@ -37,6 +37,7 @@ from typing import Literal, Optional, Union, cast
 import geopandas
 import numpy
 import rasterio
+import shapely
 from pyproj import CRS
 
 from demeter.raster import Raster
@@ -51,14 +52,7 @@ from demeter.raster.sentinel2.utils.rasters import (
 from demeter.raster.sentinel2.utils.search import find_safe_files
 from demeter.raster.sentinel2.utils.tiles import find_tiles_for_geometries
 from demeter.raster.utils.mask import mask
-from demeter.raster.utils.merge import (
-    check_for_overlapping_pixels,
-    merge,
-    merge_max,
-    merge_mean,
-    merge_min,
-    merge_stddev,
-)
+from demeter.raster.utils.merge import check_for_overlapping_pixels, merge, merge_stddev
 
 # To avoid downloading from the real Copernicus API in tests, we use local test
 # fixtures. To download fixutres for a test, set `_SAVE_TEST_FIXTURES` to True
@@ -66,15 +60,6 @@ from demeter.raster.utils.merge import (
 # `_SAVE_TEST_FIXTURES` back to False.
 _FIXTURES_DIRECTORY = "tests/raster/fixtures/sentinel2/eodata/"
 _SAVE_TEST_FIXTURES = False
-
-
-MERGE_METHODS: dict[
-    Literal["mean", "min", "max"], Callable[[Sequence[str]], Raster]
-] = {
-    "mean": merge_mean,
-    "min": merge_min,
-    "max": merge_max,
-}
 
 BANDS_NEEDED_FOR_NDVI = {Band.RED, Band.NIR, Band.SCL}
 
@@ -249,16 +234,19 @@ def build_ndvi_rasters_for_crs(
             ndvi_raster_paths = [future.result() for future in background_jobs]
 
         for statistic in statistics:
-            merge_method = MERGE_METHODS[statistic]
             print(f"Calculating {statistic} NDVI raster in {crs}")
-            merged_ndvi_raster = merge_method(ndvi_raster_paths)
+            merged_ndvi_raster = merge(
+                ndvi_raster_paths, method=statistic, allow_resampling=False
+            )
             assert merged_ndvi_raster.crs == crs
             setattr(rasters, statistic, merged_ndvi_raster)
 
         if calculate_stddev:
             print(f"Calculating standard deviation NDVI raster in {crs}")
             assert rasters.mean
-            stddev_ndvi_raster = merge_stddev(ndvi_raster_paths, rasters.mean)
+            stddev_ndvi_raster = merge_stddev(
+                ndvi_raster_paths, rasters.mean, allow_resampling=False
+            )
             assert stddev_ndvi_raster.crs == crs
             rasters.stddev = stddev_ndvi_raster
 
@@ -331,6 +319,14 @@ def build_ndvi_raster_for_datatake(
         merged_rasters[Band.NIR],
         merged_rasters[Band.SCL],
     )
+
+    # The SCL mask is upscaled from 20m to 10m resolution, so we may need to
+    # crop 10m off the edges for it to line up perfectly with the red and NIR
+    # rasters:
+    if scl.shape != red.shape:
+        scl = mask(scl, [shapely.box(*red.bounds)], crop=True)
+
+    # Check that all the rasters are aligned on the same pixel grid:
     assert red.shape == nir.shape == scl.shape
     assert red.transform == nir.transform == scl.transform
     assert red.crs == nir.crs == scl.crs
@@ -372,16 +368,21 @@ def merge_and_crop_rasters(
     boundaries. Values from adjacent tiles should be identical within this
     boundary region - if not, log a warning.
     """
-    merge_options = {
-        "method": check_for_overlapping_pixels,
-        "res": 10,
-        "target_aligned_pixels": True,
-    }
     if crop_to is None:
-        return merge(raster_paths, **merge_options)  # type: ignore
+        return _merge_rasters(raster_paths)
 
-    merged = merge(raster_paths, bounds=tuple(crop_to.total_bounds), **merge_options)  # type: ignore
+    merged = _merge_rasters(raster_paths, bounds=tuple(crop_to.total_bounds))
     return mask(merged, crop_to, all_touched=True)
+
+
+def _merge_rasters(sources: Sequence[str], **kwargs) -> Raster:
+    return merge(
+        sources,
+        method=check_for_overlapping_pixels,
+        res=10,
+        allow_resampling=False,
+        **kwargs,
+    )
 
 
 def extract_surface_reflectance(pixels: numpy.ndarray) -> numpy.ma.MaskedArray:

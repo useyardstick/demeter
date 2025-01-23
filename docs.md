@@ -47,9 +47,6 @@
   * [mask](#demeter.raster.utils.mask.mask)
 * [demeter.raster.utils.merge](#demeter.raster.utils.merge)
   * [merge](#demeter.raster.utils.merge.merge)
-  * [merge\_min](#demeter.raster.utils.merge.merge_min)
-  * [merge\_max](#demeter.raster.utils.merge.merge_max)
-  * [merge\_mean](#demeter.raster.utils.merge.merge_mean)
   * [merge\_variance](#demeter.raster.utils.merge.merge_variance)
   * [merge\_stddev](#demeter.raster.utils.merge.merge_stddev)
   * [check\_for\_overlapping\_pixels](#demeter.raster.utils.merge.check_for_overlapping_pixels)
@@ -710,6 +707,8 @@ def merge(rasters: Sequence,
           *,
           method: Union[Literal["first", "last", "min", "max", "sum", "count",
                                 "mean"], Callable] = "first",
+          bounds: Optional[tuple[float, float, float, float]] = None,
+          allow_resampling: bool = True,
           **kwargs) -> Raster
 ```
 
@@ -723,35 +722,13 @@ details on the available methods.
 In addition to rasterio's built-in methods listed above, this also supports
 a `mean` method that returns the mean of all valid overlapping pixels.
 
-<a id="demeter.raster.utils.merge.merge_min"></a>
+If you only need a specific region of the merged raster, pass
+`bounds=(left, bottom, right, top)`. This will speed up the merge
+significantly.
 
-#### merge\_min
-
-```python
-def merge_min(rasters: Sequence, **kwargs) -> Raster
-```
-
-Merge the given rasters, using the minimum value at each overlapping pixel.
-
-<a id="demeter.raster.utils.merge.merge_max"></a>
-
-#### merge\_max
-
-```python
-def merge_max(rasters: Sequence, **kwargs) -> Raster
-```
-
-Merge the given rasters, using the maxiumum value at each overlapping pixel.
-
-<a id="demeter.raster.utils.merge.merge_mean"></a>
-
-#### merge\_mean
-
-```python
-def merge_mean(rasters: Sequence, **kwargs) -> Raster
-```
-
-Merge the given rasters, using the mean value at each overlapping pixel.
+By default, this function will resample rasters if they don't align to a
+common pixel grid. To prevent this, set `allow_resampling=False`. This will
+raise an error if the input rasters don't align.
 
 <a id="demeter.raster.utils.merge.merge_variance"></a>
 

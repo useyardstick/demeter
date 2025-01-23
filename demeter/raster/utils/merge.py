@@ -1,8 +1,8 @@
 import os
 import warnings
-from collections.abc import Callable, Sequence
-from contextlib import ExitStack, nullcontext
-from typing import Literal, Union
+from collections.abc import Callable, Iterable, Sequence
+from contextlib import ExitStack, contextmanager, nullcontext
+from typing import Literal, Optional, Union
 
 import numpy
 import rasterio
@@ -10,6 +10,17 @@ import rasterio.merge
 from rasterio.merge import copy_count, copy_sum
 
 from demeter.raster import Raster
+from demeter.raster.utils.transform import (
+    align_bounds_to_transform,
+    extract_grid_offset_from_transform,
+    extract_resolution_from_transform,
+)
+
+# To merge without resampling, all rasters must be on the same pixel grid.
+# Sometimes raster grids don't align perfectly because of rounding issues. As
+# long as they match to within this many digits after the decimal, we assume
+# they align enough to avoid resampling when merging.
+_PIXEL_GRID_ROUNDING_DIGITS = 7  # ~1cm precision for lat/lng coordinates
 
 
 def merge(
@@ -18,6 +29,8 @@ def merge(
     method: Union[
         Literal["first", "last", "min", "max", "sum", "count", "mean"], Callable
     ] = "first",
+    bounds: Optional[tuple[float, float, float, float]] = None,
+    allow_resampling: bool = True,
     **kwargs,
 ) -> Raster:
     """
@@ -30,34 +43,28 @@ def merge(
 
     In addition to rasterio's built-in methods listed above, this also supports
     a `mean` method that returns the mean of all valid overlapping pixels.
+
+    If you only need a specific region of the merged raster, pass
+    `bounds=(left, bottom, right, top)`. This will speed up the merge
+    significantly.
+
+    By default, this function will resample rasters if they don't align to a
+    common pixel grid. To prevent this, set `allow_resampling=False`. This will
+    raise an error if the input rasters don't align.
     """
     if isinstance(rasters[0], Raster):
-        with ExitStack() as stack:
-            datasets = [stack.enter_context(raster.as_dataset()) for raster in rasters]
-            return _merge(datasets, method=method, **kwargs)
+        dataset_opener = _rasters_as_datasets
+    else:
+        dataset_opener = nullcontext  # type: ignore
 
-    return _merge(rasters, method=method, **kwargs)
-
-
-def merge_min(rasters: Sequence, **kwargs) -> Raster:
-    """
-    Merge the given rasters, using the minimum value at each overlapping pixel.
-    """
-    return merge(rasters, method="min", **kwargs)
-
-
-def merge_max(rasters: Sequence, **kwargs) -> Raster:
-    """
-    Merge the given rasters, using the maxiumum value at each overlapping pixel.
-    """
-    return merge(rasters, method="max", **kwargs)
-
-
-def merge_mean(rasters: Sequence, **kwargs) -> Raster:
-    """
-    Merge the given rasters, using the mean value at each overlapping pixel.
-    """
-    return merge(rasters, method="mean", **kwargs)
+    with dataset_opener(rasters) as sources:
+        return _merge(
+            sources,
+            method=method,
+            bounds=bounds,
+            allow_resampling=allow_resampling,
+            **kwargs,
+        )
 
 
 def merge_variance(rasters: Sequence, mean: Raster, **kwargs) -> Raster:
@@ -85,7 +92,22 @@ def merge_stddev(rasters: Sequence, mean: Raster, **kwargs) -> Raster:
     )
 
 
-def _merge(sources: Sequence, *, method, output_count=None, **kwargs) -> Raster:
+@contextmanager
+def _rasters_as_datasets(rasters: Iterable[Raster]):
+    with ExitStack() as stack:
+        datasets = [stack.enter_context(raster.as_dataset()) for raster in rasters]
+        yield datasets
+
+
+def _merge(
+    sources: Sequence,
+    *,
+    method,
+    bounds=None,
+    allow_resampling=True,
+    output_count=None,
+    **kwargs,
+) -> Raster:
     # Get the CRS from the first raster. If any of the other rasters have a
     # different CRS, the call to `rasterio.merge.merge` below will raise an
     # exception, so we can safely assume this is the CRS to use for the output
@@ -104,9 +126,35 @@ def _merge(sources: Sequence, *, method, output_count=None, **kwargs) -> Raster:
     if crs is None:
         raise ValueError("Rasters have no CRS")
 
+    # To merge without resampling, all rasters must be on the same pixel grid:
+    if not allow_resampling:
+        transforms = []
+        for source in sources:
+            with dataset_opener(source) as dataset:
+                transforms.append(dataset.transform)
+
+        _require_aligned_pixel_grids(transforms)
+
+        # If bounds are given, snap them to the rasters' common pixel grid:
+        if bounds:
+            aligned_bounds = [
+                align_bounds_to_transform(bounds, transform) for transform in transforms
+            ]
+            # Sometimes raster grids don't align perfectly because of rounding
+            # issues. As long as the bounds are close enough, we're good:
+            aligned_bounds_rounded = [
+                tuple(row)
+                for row in numpy.array(aligned_bounds).round(
+                    _PIXEL_GRID_ROUNDING_DIGITS
+                )
+            ]
+            aligned_bounds_unique = set(aligned_bounds_rounded)
+            assert len(aligned_bounds_unique) == 1
+            bounds = aligned_bounds_unique.pop()
+
     calculating_mean = method == "mean"
     if calculating_mean:
-        if num_bands > 1:
+        if output_count is not None or num_bands > 1:
             raise ValueError(
                 "Calculating mean for multi-band rasters not yet supported"
             )
@@ -121,6 +169,7 @@ def _merge(sources: Sequence, *, method, output_count=None, **kwargs) -> Raster:
         sources,
         masked=True,
         method=method,
+        bounds=bounds,
         output_count=output_count,
         **kwargs,
     )
@@ -130,6 +179,28 @@ def _merge(sources: Sequence, *, method, output_count=None, **kwargs) -> Raster:
         return _mean_from_sum_and_count(raster)
 
     return raster
+
+
+def _require_aligned_pixel_grids(transforms: Iterable[rasterio.Affine]):
+    # Transforms are aligned if they have the same resolution and grid offset.
+    resolutions = [
+        extract_resolution_from_transform(transform) for transform in transforms
+    ]
+    if len(set(resolutions)) > 1:
+        raise ValueError("Rasters must have the same resolution to avoid resampling")
+
+    grid_offsets = [
+        extract_grid_offset_from_transform(transform) for transform in transforms
+    ]
+
+    # Sometimes raster grids don't align perfectly because of rounding issues.
+    # Check that they're close enough:
+    grid_offsets_rounded = [
+        tuple(row)
+        for row in numpy.array(grid_offsets).round(_PIXEL_GRID_ROUNDING_DIGITS)
+    ]
+    if len(set(grid_offsets_rounded)) > 1:
+        raise ValueError("Rasters must have the same grid offsets to avoid resampling")
 
 
 def _mean_from_sum_and_count(raster: Raster) -> Raster:

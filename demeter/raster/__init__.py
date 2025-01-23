@@ -5,7 +5,10 @@ import numpy
 import rasterio
 import rasterio.transform
 
-from demeter.raster.utils.transform import extract_resolution_from_transform
+from demeter.raster.utils.transform import (
+    extract_grid_offset_from_transform,
+    extract_resolution_from_transform,
+)
 
 
 @dataclass
@@ -81,8 +84,7 @@ class Raster:
         The (x, y) offset of this raster's origin point on a grid aligned with
         its resolution.
         """
-        xres, yres = self.resolution
-        return self.transform.xoff % xres, self.transform.yoff % yres
+        return extract_grid_offset_from_transform(self.transform)
 
     @property
     def dtype(self):
