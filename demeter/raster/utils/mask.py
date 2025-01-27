@@ -1,6 +1,7 @@
 from contextlib import nullcontext
 
 import geopandas
+import rasterio
 import rasterio.mask
 
 from demeter.raster import Raster
@@ -16,12 +17,14 @@ def mask(raster, shapes, **kwargs) -> Raster:
     if isinstance(shapes, geopandas.GeoDataFrame):
         shapes = shapes.geometry
 
-    if isinstance(raster, Raster):
-        dataset_opener = raster.as_dataset
+    if isinstance(raster, str):
+        dataset_opener = rasterio.open
+    elif isinstance(raster, Raster):
+        dataset_opener = Raster.as_dataset
     else:
-        dataset_opener = lambda: nullcontext(raster)  # type: ignore
+        dataset_opener = nullcontext
 
-    with dataset_opener() as dataset:
+    with dataset_opener(raster) as dataset:
         crs = dataset.crs
         if crs is None:
             raise ValueError("Raster has no CRS")

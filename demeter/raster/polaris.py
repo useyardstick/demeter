@@ -41,7 +41,7 @@ from demeter.constants import OM_TO_SOC
 from demeter.raster import Raster
 from demeter.raster.depth_enum import DepthEnum
 from demeter.raster.utils.mask import mask
-from demeter.raster.utils.merge import merge
+from demeter.raster.utils.merge import check_for_overlapping_pixels, merge
 from demeter.utils import (
     bounds_snapped_to_grid,
     calculate_carbon_stock_stddev,
@@ -55,6 +55,8 @@ BASE_URL = os.environ.get(
 
 # POLARIS tiles are 1° by 1°
 PolarisTile = tuple[int, int, int, int]
+
+RASTER_CRS = "EPSG:4326"
 
 
 @dataclass(frozen=True)
@@ -134,7 +136,7 @@ def estimate_carbon_stock(
     carbon_stock_mean = soil_organic_carbon_mean * bulk_density_mean
 
     if not calculate_standard_deviation:
-        return CombinedRasters(mean=Raster(carbon_stock_mean, transform, "EPSG:4326"))
+        return CombinedRasters(mean=Raster(carbon_stock_mean, transform, RASTER_CRS))
 
     assert organic_matter.stddev
     assert bulk_density.stddev
@@ -149,8 +151,8 @@ def estimate_carbon_stock(
     )
 
     return CombinedRasters(
-        mean=Raster(carbon_stock_mean, transform, "EPSG:4326"),
-        stddev=Raster(carbon_stock_stddev, transform, "EPSG:4326"),
+        mean=Raster(carbon_stock_mean, transform, RASTER_CRS),
+        stddev=Raster(carbon_stock_stddev, transform, RASTER_CRS),
     )
 
 
@@ -224,7 +226,10 @@ def fetch_polaris_data_for_depth_range(
         rasters_by_depth[depth] = {}
         for statistic, downloads in downloads_by_statistic.items():
             rasters_by_depth[depth][statistic] = merge(
-                downloads, bounds=bounds, target_aligned_pixels=True
+                downloads,
+                bounds=bounds,
+                method=check_for_overlapping_pixels,
+                allow_resampling=False,
             )
 
     # Assert rasters all have the same shape and affine transform:
@@ -264,7 +269,7 @@ def fetch_polaris_data_for_depth_range(
 
     # Crop to geometries:
     cropped_mean_raster = mask(
-        Raster(weighted_average_mean, transform, "EPSG:4326"),
+        Raster(weighted_average_mean, transform, RASTER_CRS),
         geometries,
         all_touched=True,
     )
@@ -280,7 +285,7 @@ def fetch_polaris_data_for_depth_range(
                 statistic_rasters, weights
             )
             cropped_statistic_raster = mask(
-                Raster(weighted_average_statistic, transform, "EPSG:4326"),
+                Raster(weighted_average_statistic, transform, RASTER_CRS),
                 geometries,
                 all_touched=True,
             )
@@ -304,7 +309,7 @@ def fetch_polaris_data_for_depth_range(
 
     # Crop to geometries:
     cropped_stddev_raster = mask(
-        Raster(weighted_average_stddev, transform, "EPSG:4326"),
+        Raster(weighted_average_stddev, transform, RASTER_CRS),
         geometries,
         all_touched=True,
     )

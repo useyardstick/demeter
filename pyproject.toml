@@ -31,6 +31,10 @@ profile = "black"
 [tool.pytest.ini_options]
 env_override_existing_values = 1
 env_files = [".env.test"]
+filterwarnings = [
+  "error",
+  "ignore::rasterio.errors.NotGeoreferencedWarning",
+]
 
 [[tool.mypy.overrides]]
 module = [
@@ -54,6 +58,7 @@ modules = [
   "demeter.raster.sentinel2.ndvi",
   "demeter.raster.utils.mask",
   "demeter.raster.utils.merge",
+  "demeter.raster.utils.reprojection",
 ]
 
 [tool.pydoc-markdown.renderer]
