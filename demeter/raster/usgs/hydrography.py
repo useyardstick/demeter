@@ -170,9 +170,21 @@ def fetch_and_merge_rasters(
                     assert profile["count"] == 1
 
                     if bounds:
-                        window = rasterio.windows.intersection(
-                            rasterio.windows.from_bounds(*bounds, src.transform),
-                            rasterio.windows.Window(0, 0, src.width, src.height),
+                        window = (
+                            rasterio.windows.from_bounds(*bounds, src.transform)
+                            .round_offsets()
+                            .round_lengths()
+                        )
+                        # Expand by 1 pixel on each side to ensure we capture
+                        # the full extent:
+                        window = rasterio.windows.Window(
+                            window.col_off - 1,
+                            window.row_off - 1,
+                            window.width + 2,
+                            window.height + 2,
+                        )
+                        window = window.intersection(
+                            rasterio.windows.Window(0, 0, src.width, src.height)
                         )
                     else:
                         window = None

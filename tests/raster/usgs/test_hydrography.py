@@ -23,7 +23,7 @@ def test_find_hu4_codes(geometries):
 def test_fetch_and_merge_cat(geometries):
     catchments = fetch_and_merge_rasters("cat.tif", geometries)
     assert catchments.raster.shape == (1633, 8702)
-    assert catchments.raster.pixels.count() == 41143
+    assert catchments.raster.pixels.count() == 41205
     assert catchments.raster.crs in {"EPSG:5070", "ESRI:102039"}
     assert numpy.array_equal(
         numpy.unique(catchments.raster.pixels).compressed(),

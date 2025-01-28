@@ -2,3 +2,5 @@
 extend-ignore =
   # Ignore all style warnings because we use black
   E,
+
+per-file-ignores = __init__.py:F401
