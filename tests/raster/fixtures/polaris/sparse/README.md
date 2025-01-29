@@ -1,5 +1,5 @@
-POLARIS fixtures
-================
+Sparse POLARIS fixtures
+=======================
 
 This directory contains GeoTIFF raster images from POLARIS, with the data
 values zeroed out to keep file sizes small. Even zeroed out, these files are

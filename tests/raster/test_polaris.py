@@ -1,7 +1,6 @@
 import re
 import shutil
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import geopandas
 import pytest
@@ -10,19 +9,14 @@ import rasterio.transform
 from demeter.raster import polaris
 
 FIXTURES = {
-    filename: Path("tests", "raster", "fixtures", "polaris", filename).read_bytes()
+    filename: Path(
+        "tests", "raster", "fixtures", "polaris", "sparse", filename
+    ).read_bytes()
     for filename in (
         "lat4142_lon-88-87.tif",
         "lat4243_lon-88-87.tif",
     )
 }
-
-
-@pytest.fixture(autouse=True)
-def local_cache(monkeypatch):
-    with TemporaryDirectory() as tmpdir:
-        monkeypatch.setenv("POLARIS_CACHED_RASTER_FILES_DIRECTORY", tmpdir)
-        yield tmpdir
 
 
 @pytest.fixture
@@ -179,7 +173,7 @@ def test_fetch_polaris_data(mock_polaris, geometries):
 
 
 def test_fetch_polaris_data_with_remote_cache(
-    mock_polaris, geometries, local_cache, remote_cache
+    mock_polaris, geometries, polaris_cache_directory, remote_cache
 ):
     for _ in range(2):
         polaris.fetch_polaris_data(
@@ -188,7 +182,7 @@ def test_fetch_polaris_data_with_remote_cache(
             statistic=polaris.Statistic.MEAN,
             depth=polaris.Depth.ZERO_TO_FIVE_CM,
         )
-        shutil.rmtree(local_cache)  # clear local cache
+        shutil.rmtree(polaris_cache_directory)  # clear local cache
 
     assert all(request.call_count == 1 for request in mock_polaris)
 

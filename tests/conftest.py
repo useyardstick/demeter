@@ -87,3 +87,10 @@ def sentinel2_cache_directory(monkeypatch):
         with TemporaryDirectory() as tmpdir:
             monkeypatch.setenv("SENTINEL2_CACHED_RASTER_FILES_DIRECTORY", tmpdir)
             yield tmpdir
+
+
+@pytest.fixture(autouse=True)
+def polaris_cache_directory(monkeypatch):
+    with TemporaryDirectory() as tmpdir:
+        monkeypatch.setenv("POLARIS_CACHED_RASTER_FILES_DIRECTORY", tmpdir)
+        yield tmpdir
