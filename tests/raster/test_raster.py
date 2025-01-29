@@ -49,7 +49,9 @@ def crs():
 def test_load_and_save_raster(tmp_path):
     tiff_save_path = tmp_path / "testing_save.tif"
 
-    raster = Raster.from_file("tests/raster/fixtures/polaris/lat4142_lon-88-87.tif")
+    raster = Raster.from_file(
+        "tests/raster/fixtures/polaris/sparse/lat4142_lon-88-87.tif"
+    )
     raster.save(tiff_save_path)
 
     raster2 = Raster.from_file(tiff_save_path)

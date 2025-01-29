@@ -1,22 +1,12 @@
+import os
 import re
 import shutil
-from pathlib import Path
 
 import geopandas
 import pytest
 import rasterio.transform
 
 from demeter.raster import polaris
-
-FIXTURES = {
-    filename: Path(
-        "tests", "raster", "fixtures", "polaris", "sparse", filename
-    ).read_bytes()
-    for filename in (
-        "lat4142_lon-88-87.tif",
-        "lat4243_lon-88-87.tif",
-    )
-}
 
 
 @pytest.fixture
@@ -52,24 +42,20 @@ def geometries():
 
 @pytest.fixture
 def mock_polaris(requests_mock):
-    soil_properties_pattern = "|".join(
-        soil_property.value for soil_property in polaris.SoilProperty
+    requests_mock.add_callback(
+        "GET",
+        re.compile(re.escape("http://hydrology.cee.duke.edu/POLARIS/PROPERTIES/v1.0/")),
+        callback=_mock_polaris_callback,
     )
-    statistics_pattern = "|".join(stat.value for stat in polaris.Statistic)
-    depth_values = [depth.value for depth in polaris.Depth]
-    depths_pattern = "|".join(
-        f"{start_depth}_{end_depth}" for start_depth, end_depth in depth_values
-    )
-    return [
-        requests_mock.get(
-            re.compile(
-                f"http://hydrology.cee.duke.edu/POLARIS/PROPERTIES/v1.0/({soil_properties_pattern})/({statistics_pattern})/({depths_pattern})/{filename}"
-            ),
-            content=content,
-            headers={"Content-Type": "image/tiff"},
-        )
-        for filename, content in FIXTURES.items()
-    ]
+    yield requests_mock
+
+
+def _mock_polaris_callback(request):
+    filename = os.path.basename(request.url)
+    fixture_dir = "tests/raster/fixtures/polaris/sparse"
+    fixture_path = os.path.join(fixture_dir, filename)
+    with open(fixture_path, "rb") as file:
+        return 200, {"Content-Type": "image/tiff"}, file.read()
 
 
 def test_fetch_polaris_data_for_depth_range(mock_polaris, geometries):
@@ -96,11 +82,10 @@ def test_fetch_polaris_data_for_depth_range_below_ground(mock_polaris, geometrie
     assert rasters.mean.transform == rasters.stddev.transform
 
     # Check that we didn't request any POLARIS tiles above 30cm:
-    for fixture in mock_polaris:
-        for request in fixture.request_history:
-            for depth in polaris.Depth.select_between(0, 30):
-                start_depth, end_depth = depth.value
-                assert f"{start_depth}_{end_depth}" not in request.path
+    for call in mock_polaris.calls:
+        for depth in polaris.Depth.select_between(0, 30):
+            start_depth, end_depth = depth.value
+            assert f"{start_depth}_{end_depth}" not in call.request.path_url
 
 
 def test_fetch_polaris_data_for_depth_range_arbitrary_depths(mock_polaris, geometries):
@@ -116,11 +101,10 @@ def test_fetch_polaris_data_for_depth_range_arbitrary_depths(mock_polaris, geome
 
     # Check that we only fetched the necessary POLARIS depths:
     requested_depths = set()
-    for fixture in mock_polaris:
-        for request in fixture.request_history:
-            match = re.search(r"/(\d+)_(\d+)/[^/]+\.tif", request.path)
-            assert match
-            requested_depths.add(match.groups())
+    for call in mock_polaris.calls:
+        match = re.search(r"/(\d+)_(\d+)/[^/]+\.tif", call.request.path_url)
+        assert match
+        requested_depths.add(match.groups())
 
     assert requested_depths == {("5", "15"), ("15", "30"), ("30", "60")}
 
@@ -184,7 +168,8 @@ def test_fetch_polaris_data_with_remote_cache(
         )
         shutil.rmtree(polaris_cache_directory)  # clear local cache
 
-    assert all(request.call_count == 1 for request in mock_polaris)
+    unique_paths_called = {call.request.path_url for call in mock_polaris.calls}
+    assert len(unique_paths_called) == len(mock_polaris.calls)
 
 
 def test_select_depths_for_polaris():

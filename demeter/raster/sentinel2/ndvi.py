@@ -55,11 +55,11 @@ from demeter.raster.utils.mask import mask
 from demeter.raster.utils.merge import check_for_overlapping_pixels, merge, merge_stddev
 
 # To avoid downloading from the real Copernicus API in tests, we use local test
-# fixtures. To download fixutres for a test, set `_SAVE_TEST_FIXTURES` to True
-# and run the test once using real Copernicus API credentials. Then set
-# `_SAVE_TEST_FIXTURES` back to False.
+# fixtures. To download fixutres for a test, set the `SAVE_TEST_FIXTURES`
+# environment variable and run the test once using real Copernicus API
+# credentials.
+_SAVE_TEST_FIXTURES = "SAVE_TEST_FIXTURES" in os.environ
 _FIXTURES_DIRECTORY = "tests/raster/fixtures/sentinel2/eodata/"
-_SAVE_TEST_FIXTURES = False
 
 BANDS_NEEDED_FOR_NDVI = {Band.RED, Band.NIR, Band.SCL}
 
