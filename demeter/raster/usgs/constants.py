@@ -5,6 +5,7 @@ from enum import Enum, unique
 S3_BUCKET_NAME = "prd-tnm"
 
 # Downloaded raster files are cached here:
+# TODO: use tmpdir in tests
 CACHED_RASTER_FILES_DIRECTORY = os.environ.get(
     "USGS_CACHED_RASTER_FILES_DIRECTORY", ".usgs_cache"
 )

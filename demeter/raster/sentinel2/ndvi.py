@@ -25,7 +25,6 @@ which is lossy.
 """
 
 import os
-import shutil
 from collections import defaultdict
 from collections.abc import Collection, Iterable, Sequence
 from concurrent.futures import ProcessPoolExecutor
@@ -36,13 +35,12 @@ from typing import Literal, Optional, Union, cast
 
 import geopandas
 import numpy
-import rasterio
 import shapely.geometry
 from pyproj import CRS
 
 from demeter.raster import Raster
 from demeter.raster.sentinel2.constants import CLOUD_VALUES, Band, Resolution
-from demeter.raster.sentinel2.utils.download import download_keys, get_cache_directory
+from demeter.raster.sentinel2.utils.download import download_keys
 from demeter.raster.sentinel2.utils.rasters import (
     DetectorFootprintMaskMetadata,
     RasterMetadata,
@@ -53,13 +51,6 @@ from demeter.raster.sentinel2.utils.search import find_safe_files
 from demeter.raster.sentinel2.utils.tiles import find_tiles_for_geometries
 from demeter.raster.utils.mask import mask
 from demeter.raster.utils.merge import check_for_overlapping_pixels, merge, merge_stddev
-
-# To avoid downloading from the real Copernicus API in tests, we use local test
-# fixtures. To download fixutres for a test, set the `SAVE_TEST_FIXTURES`
-# environment variable and run the test once using real Copernicus API
-# credentials.
-_SAVE_TEST_FIXTURES = "SAVE_TEST_FIXTURES" in os.environ
-_FIXTURES_DIRECTORY = "tests/raster/fixtures/sentinel2/eodata/"
 
 BANDS_NEEDED_FOR_NDVI = {Band.RED, Band.NIR, Band.SCL}
 
@@ -106,15 +97,6 @@ def fetch_and_build_ndvi_rasters(
         f"Searching for rasters in tiles: {sorted({tile_id for tile_id, _ in tiles})}"
     )
     safe_keys = list(find_safe_files(tiles, year, month))
-
-    if _SAVE_TEST_FIXTURES:
-        manifest_paths = list(
-            download_keys(f"{key}/manifest.safe" for key in safe_keys)
-        )
-        for safe_key, manifest_path in zip(safe_keys, manifest_paths):
-            fixture_path = os.path.join(_FIXTURES_DIRECTORY, safe_key, "manifest.safe")
-            os.makedirs(os.path.dirname(fixture_path), exist_ok=True)
-            shutil.copy(manifest_path, fixture_path)
 
     raster_keys = list_raster_keys(
         safe_keys,
@@ -292,9 +274,6 @@ def build_ndvi_raster_for_datatake(
             band = _ndvi_band(raster_metadata.band)
             rasters_by_band[band].append(raster_path)
 
-        if _SAVE_TEST_FIXTURES:
-            _save_test_fixture(raster_path, crop_to)
-
     # Then merge them together:
     merged_rasters: dict[Band, Raster] = {
         band: merge_and_crop_rasters(rasters, crop_to)
@@ -396,37 +375,3 @@ def extract_surface_reflectance(pixels: numpy.ndarray) -> numpy.ma.MaskedArray:
 
 def calculate_ndvi(red, nir):
     return (nir - red) / (nir + red)
-
-
-def _save_test_fixture(raster_path, crop_to):
-    """
-    Copy downloaded rasters to the test fixtures directory.
-
-    To keep file sizes small, crop rasters to the bounding boxes of the input
-    geometries, plus a small buffer. Detector footprint masks are copied
-    unmodified, as they are already quite small.
-    """
-    key = os.path.relpath(raster_path, get_cache_directory())
-    fixture_path = os.path.join(_FIXTURES_DIRECTORY, key)
-    os.makedirs(os.path.dirname(fixture_path), exist_ok=True)
-
-    try:
-        DetectorFootprintMaskMetadata.from_filename(raster_path)
-    except ValueError:
-        is_mask = False
-    else:
-        is_mask = True
-
-    if crop_to is None or is_mask:
-        shutil.copyfile(raster_path, fixture_path)
-    else:
-        buffered_bounding_boxes = crop_to.geometry.buffer(250).envelope
-        with rasterio.open(raster_path) as dataset:
-            cropped_raster = mask(dataset, buffered_bounding_boxes, crop=True)
-        try:
-            os.remove(fixture_path)
-        except FileNotFoundError:
-            pass
-        cropped_raster.save(fixture_path, masked=False, quality=100, reversible="YES")
-
-    print(f"Saved test fixture to {fixture_path}")

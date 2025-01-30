@@ -1,43 +1,27 @@
-import os
-import re
-
 import geopandas
 import pytest
 from pandas.testing import assert_frame_equal
 
 from demeter import api
-from demeter.raster import polaris
 from demeter.raster.usgs.constants import FlowDirection
 
 
 @pytest.fixture
-def mock_polaris(requests_mock):
-    requests_mock.add_callback(
-        "GET",
-        re.compile(re.escape(polaris.BASE_URL)),
-        callback=_mock_polaris_callback,
-    )
-    yield requests_mock
-
-
-def _mock_polaris_callback(request):
-    fixture_dir = "tests/raster/fixtures/polaris/point_data"
-    fixture_path = os.path.join(fixture_dir, request.url.removeprefix(polaris.BASE_URL))
-    with open(fixture_path, "rb") as file:
-        return 200, {"Content-Type": "image/tiff"}, file.read()
+def points():
+    return geopandas.read_file("tests/fixtures/points.geojson")
 
 
 def test_fetch_point_data(
-    mock_polaris,
-    sentinel2_rasters_in_s3,
+    points,
     record_or_replay_requests,
+    use_polaris_fixtures,
+    use_sentinel2_fixtures,
 ):
-    record_or_replay_requests(
-        "tests/fixtures/recorded_responses/2024_09_point_data.yaml"
-    )
+    use_polaris_fixtures(crop_to=points)
+    use_sentinel2_fixtures(crop_to=points)
 
     point_data = api.fetch_point_data(
-        "tests/fixtures/points.geojson",
+        points,
         [
             "polaris_carbon_stock",
             "sentinel2_ndvi",

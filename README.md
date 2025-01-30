@@ -50,7 +50,7 @@ source .venv/bin/activate
 Install development dependencies:
 
 ```
-pip install -r requirements.dev.txt
+pip install -r requirements.dev.txt -e .
 ```
 
 Install pre-commit hooks:
@@ -63,4 +63,14 @@ Run tests:
 
 ```
 pytest
+```
+
+### Test fixtures
+
+This library includes test fixtures downloaded from real data sources, cropped
+to reduce file size. To regenerate these fixtures, run the tests with the
+`SAVE_TEST_FIXTURES` environment variable set:
+
+```
+SAVE_TEST_FIXTURES=1 pytest
 ```

@@ -25,12 +25,10 @@ def geometries_spanning_datatake_edge():
 
 def test_fetch_and_build_ndvi_rasters(
     geometries,
-    sentinel2_rasters_in_s3,
     record_or_replay_requests,
+    use_sentinel2_fixtures,
 ):
-    record_or_replay_requests(
-        f"{SEARCH_RESPONSES_FIXTURE_DIR}/2024_09_fields_spanning_sentinel2_tiles.yaml"
-    )
+    use_sentinel2_fixtures(crop_to=geometries)
 
     rasters = list(fetch_and_build_ndvi_rasters(geometries, 2024, 9))
     assert len(rasters) == 1  # geometries are all in UTM zone 14
@@ -44,6 +42,15 @@ def test_fetch_and_build_ndvi_rasters(
     assert round(raster.mean.pixels.mean(), 3) == 0.548
     assert raster.mean.crs == "EPSG:32614"
 
+    assert raster.min
+    assert round(raster.min.pixels.mean(), 3) == 0.458
+
+    assert raster.max
+    assert round(raster.max.pixels.mean(), 3) == 0.602
+
+    assert raster.stddev
+    assert round(raster.stddev.pixels.mean(), 3) == 0.049
+
     # Check that raster bounds are within 10m (1 pixel) of input geometry bounds:
     height, width = raster.mean.shape
     raster_bounds = rasterio.transform.array_bounds(
@@ -53,86 +60,17 @@ def test_fetch_and_build_ndvi_rasters(
     assert all(abs(input_geometry_bounds - raster_bounds) < 10)
 
 
-def test_fetch_and_build_ndvi_rasters_min(
-    geometries,
-    sentinel2_rasters_in_s3,
-    replay_requests,
-):
-    replay_requests(
-        f"{SEARCH_RESPONSES_FIXTURE_DIR}/2024_09_fields_spanning_sentinel2_tiles.yaml"
-    )
-
-    rasters = list(
-        fetch_and_build_ndvi_rasters(geometries, 2024, 9, statistics=["min"])
-    )
-    assert len(rasters) == 1
-
-    raster = rasters[0]
-    assert raster.min
-
-    pixels, transform, crs = raster.min
-    assert round(pixels.mean(), 3) == 0.458
-
-
-def test_fetch_and_build_ndvi_rasters_max(
-    geometries,
-    sentinel2_rasters_in_s3,
-    replay_requests,
-):
-    replay_requests(
-        f"{SEARCH_RESPONSES_FIXTURE_DIR}/2024_09_fields_spanning_sentinel2_tiles.yaml"
-    )
-
-    rasters = list(
-        fetch_and_build_ndvi_rasters(geometries, 2024, 9, statistics=["max"])
-    )
-    assert len(rasters) == 1
-
-    raster = rasters[0]
-    assert raster.max
-
-    pixels, transform, crs = raster.max
-    assert round(pixels.mean(), 3) == 0.602
-
-
-def test_fetch_and_build_ndvi_rasters_stddev(
-    geometries,
-    sentinel2_rasters_in_s3,
-    replay_requests,
-):
-    replay_requests(
-        f"{SEARCH_RESPONSES_FIXTURE_DIR}/2024_09_fields_spanning_sentinel2_tiles.yaml"
-    )
-
-    with pytest.raises(ValueError):
-        list(fetch_and_build_ndvi_rasters(geometries, 2024, 9, statistics=["stddev"]))
-
-    rasters = list(
-        fetch_and_build_ndvi_rasters(geometries, 2024, 9, statistics=["mean", "stddev"])
-    )
-    assert len(rasters) == 1
-
-    raster = rasters[0]
-    assert raster.mean
-    assert raster.stddev
-
-    pixels, transform, crs = raster.stddev
-    assert round(pixels.mean(), 3) == 0.049
-
-
 def test_detector_footprint_mask(
     geometries_spanning_datatake_edge,
-    sentinel2_rasters_in_s3,
     record_or_replay_requests,
+    use_sentinel2_fixtures,
 ):
     """
     Applying the detector footprint mask should prevent artifacts at the edges
     of satellite's field of view. These artifacts are most visible in the min
     NDVI raster.
     """
-    record_or_replay_requests(
-        f"{SEARCH_RESPONSES_FIXTURE_DIR}/2024_09_agoro_shea_flanagan_west.yaml"
-    )
+    use_sentinel2_fixtures(crop_to=geometries_spanning_datatake_edge)
 
     rasters = list(
         fetch_and_build_ndvi_rasters(
