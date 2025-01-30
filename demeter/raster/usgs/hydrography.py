@@ -258,16 +258,22 @@ def find_hu4_codes(
     # TODO: project both input geometries and HU4 regions to EPSG:5070 first
     # for more accurate intersection in CONUS
     projected_geometries = geometries.geometry.to_crs(epsg=4269)
+    projected_geometries_union = projected_geometries.unary_union
     hu4_regions = geopandas.read_file(
         HU4_CONUS_PATH,
-        mask=projected_geometries.union_all(),
+        mask=projected_geometries_union,
     )
+
+    # The `mask` argument to `geopandas.read_file` should ensure we only read
+    # HU4 regions that intersect with the geometries, but in older versions of
+    # GeoPandas we sometimes get a few extra regions as well. Filter them out:
+    hu4_regions = hu4_regions[hu4_regions.intersects(projected_geometries_union)]
 
     if hu4_regions.empty:
         raise ValueError("No HU4 regions found for geometries. Are they in CONUS?")
 
     geometries_without_hu4_region = geometries[
-        projected_geometries.disjoint(hu4_regions.union_all())
+        projected_geometries.disjoint(hu4_regions.unary_union)
     ]
     if not geometries_without_hu4_region.empty:
         raise ValueError(

@@ -70,7 +70,8 @@ def find_tiles_for_geometries(
         # Buffer these tracks to the width of the satellite's field of view:
         orbits_projected.geometry = orbits_projected.geometry.buffer(
             (SWATH_WIDTH_KM + 10) * 1000 / 2,  # add extra 10km to be safe
-            cap_style="square",
+            cap_style=3,  # "square",
+            join_style=2,  # "mitre"
         )
 
         # Clip input geometries to UTM zone and project to UTM zone's CRS:
@@ -79,7 +80,7 @@ def find_tiles_for_geometries(
         )
         geometries_projected = geometries_clipped_to_utm_zone.to_crs(
             epsg=int(utm_zone.code)
-        ).union_all()
+        ).unary_union
 
         # Select the minimum number of tiles that cover the input geometries:
         tiles_selected = _select_tiles(tiles_projected, geometries_projected)
@@ -133,7 +134,7 @@ def find_utm_zones(
 
 
 def _select_tiles(
-    tiles: geopandas.GeoDataFrame, geometries_union: shapely.Polygon
+    tiles: geopandas.GeoDataFrame, geometries_union: shapely.geometry.Polygon
 ) -> geopandas.GeoDataFrame:
     # Find tiles that intersect with the input geometries:
     tiles_intersecting = tiles[tiles.intersects(geometries_union)]
@@ -145,7 +146,7 @@ def _select_tiles(
     for tile_count in range(1, len(tiles_intersecting) + 1):
         for tile_ids in combinations(tiles_intersecting.index, tile_count):
             tiles = tiles_intersecting.loc[list(tile_ids)]
-            if tiles.union_all().covers(geometries_union):
+            if tiles.unary_union.covers(geometries_union):
                 return tiles
 
     raise Exception("Could not find tiles that cover the input geometries")

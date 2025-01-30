@@ -18,7 +18,7 @@ def bounds_snapped_to_grid(
     """
     # Explode geometries to avoid including unused areas in the event we get
     # multipart geometries that are very far apart:
-    bounds = geometries.explode().bounds / base
+    bounds = geometries.explode(ignore_index=True).bounds / base
 
     return (
         bounds.assign(

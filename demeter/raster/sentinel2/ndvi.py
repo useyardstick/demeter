@@ -37,7 +37,7 @@ from typing import Literal, Optional, Union, cast
 import geopandas
 import numpy
 import rasterio
-import shapely
+import shapely.geometry
 from pyproj import CRS
 
 from demeter.raster import Raster
@@ -324,7 +324,7 @@ def build_ndvi_raster_for_datatake(
     # crop 10m off the edges for it to line up perfectly with the red and NIR
     # rasters:
     if scl.shape != red.shape:
-        scl = mask(scl, [shapely.box(*red.bounds)], crop=True)
+        scl = mask(scl, [shapely.geometry.box(*red.bounds)], crop=True)
 
     # Check that all the rasters are aligned on the same pixel grid:
     assert red.shape == nir.shape == scl.shape

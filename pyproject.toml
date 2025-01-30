@@ -12,15 +12,20 @@ dependencies = [
   "botocore",
   "dbfread",
   "defusedxml",
-  "geopandas ~= 1.0.1",
+  "geopandas",
   "numpy",
   "pandas",
+  "rtree",
   "pyproj",
   "rasterio ~= 1.4.3",
   "requests",
   "shapely",
   "smart-open",
 ]
+
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
 
 [tool.autoflake]
 remove-all-unused-imports = true
@@ -39,12 +44,17 @@ filterwarnings = [
 [[tool.mypy.overrides]]
 module = [
   "dbfread.*",
-  "geopandas.*",
   "rasterio.*",
   "shapely.*",
   "smart_open.*",
 ]
 follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+  "geopandas.*",
+]
+ignore_missing_imports = true
 
 [[tool.pydoc-markdown.loaders]]
 type = "python"
