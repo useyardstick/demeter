@@ -1,6 +1,7 @@
 build/
 *.egg-info/
 **/__pycache__/
+.tox
 
 .polaris_cache
 .sentinel2_cache

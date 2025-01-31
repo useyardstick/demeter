@@ -27,6 +27,28 @@ dependencies = [
 requires = ["setuptools", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
+[tool.tox]
+requires = ["tox"]
+env_list = ["deepnote", "not_deepnote"]
+
+[tool.tox.env_run_base]
+base_python = ["3.9"]
+commands = [["mypy", "."], ["pytest"]]
+constrain_package_deps = true
+
+[tool.tox.env.deepnote]
+description = "Test using Deepnote dependency constraints"
+deps = [
+  "-c https://tk.deepnote.com/constraints3.9.txt",
+  "-r requirements.dev.txt",
+]
+
+[tool.tox.env.not_deepnote]
+description = "Test without Deepnote dependency constraints"
+deps = [
+  "-r requirements.dev.txt",
+]
+
 [tool.autoflake]
 remove-all-unused-imports = true
 
@@ -36,9 +58,12 @@ profile = "black"
 [tool.pytest.ini_options]
 env_override_existing_values = 1
 env_files = [".env.test"]
+
+# https://docs.python.org/3/library/warnings.html#describing-warning-filters
 filterwarnings = [
-  "error",
-  "ignore::rasterio.errors.NotGeoreferencedWarning",
+  "error", # Turn warnings into exceptions in tests
+  "default::DeprecationWarning", # Log deprecation warnings, but don't error
+  "ignore::rasterio.errors.NotGeoreferencedWarning", # Allow fake affine transforms in tests
 ]
 
 [[tool.mypy.overrides]]
