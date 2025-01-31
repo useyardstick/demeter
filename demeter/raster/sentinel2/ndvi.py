@@ -199,7 +199,7 @@ def build_ndvi_rasters_for_crs(
         crop_to_projected = None
     else:
         # Crop geometry mask to the current UTM zone's area of use:
-        if str(crop_to.crs) != "EPSG:4326":
+        if crop_to.crs.to_epsg() != 4326:
             raise ValueError("Input geometries must be in EPSG:4326")
         crs_area_of_use = CRS.from_string(crs).area_of_use
         assert crs_area_of_use
