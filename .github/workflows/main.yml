@@ -9,10 +9,16 @@ on:
 jobs:
   run-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tox-env: ["deepnote", "not_deepnote"]
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Run pre-commit hooks
+        uses: pre-commit/action@v3.0.1
 
       - name: Set up python
         uses: actions/setup-python@v5
@@ -20,14 +26,16 @@ jobs:
           python-version: 3.9
           cache: pip
 
-      - name: Install dependencies
-        run: pip install -r requirements.dev.txt
+      - name: Install tox
+        run: pip install tox
 
-      - name: Run pre-commit hooks
-        uses: pre-commit/action@v3.0.1
-
-      - name: Run mypy type checks
-        run: mypy .
+      - name: Cache tox environment dependencies
+        uses: actions/cache@v4
+        with:
+          path: .tox/${{ matrix.tox-env }}
+          key: tox-${{ matrix.tox-env }}-${{ hashFiles('pyproject.toml', format('.tox/{0}/constraints.txt', matrix.tox-env)) }}
+          restore-keys: |
+            tox-${{ matrix.tox-env }}
 
       # TODO: use test fixtures instead of fetching real data in tests
       - name: Cache USGS rasters
@@ -39,4 +47,6 @@ jobs:
             usgs-cache-
 
       - name: Run Tests
-        run: pytest --durations=10 --durations-min=1 -vv
+        run: tox run -e ${{ matrix.tox-env }}
+        env:
+          PYTEST_ADDOPTS: "-vv"
