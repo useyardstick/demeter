@@ -215,9 +215,8 @@ def fetch_polaris_data_for_depth_range(
             downloads_by_depth[depth] = {}
         if statistic not in downloads_by_depth[depth]:
             downloads_by_depth[depth][statistic] = []
-        downloads_by_depth[depth][statistic].append(
-            _download_polaris_tile(tile, soil_property, statistic, depth)
-        )
+        raster_path = _download_polaris_tile(tile, soil_property, statistic, depth)
+        downloads_by_depth[depth][statistic].append(raster_path)
 
     # Merge tiles:
     bounds = tuple(geometries.total_bounds.tolist())

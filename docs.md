@@ -1,5 +1,7 @@
 # Table of Contents
 
+* [demeter.api](#demeter.api)
+  * [fetch\_point\_data](#demeter.api.fetch_point_data)
 * [demeter.raster](#demeter.raster)
   * [Raster](#demeter.raster.Raster)
     * [pixels](#demeter.raster.Raster.pixels)
@@ -55,6 +57,49 @@
   * [align](#demeter.raster.utils.reprojection.align)
   * [reproject\_and\_merge](#demeter.raster.utils.reprojection.reproject_and_merge)
   * [align\_and\_merge](#demeter.raster.utils.reprojection.align_and_merge)
+
+<a id="demeter.api"></a>
+
+# demeter.api
+
+<a id="demeter.api.fetch_point_data"></a>
+
+#### fetch\_point\_data
+
+```python
+def fetch_point_data(points: Union[str, geopandas.GeoSeries,
+                                   geopandas.GeoDataFrame],
+                     values_to_fetch: Collection[Literal[
+                         "polaris_carbon_stock",
+                         "sentinel2_ndvi",
+                         "usgs_hydrography",
+                         "usgs_topography",
+                     ]],
+                     *,
+                     start_depth: int = 0,
+                     end_depth: Optional[int] = None,
+                     year: Optional[int] = None,
+                     month: Optional[int] = None) -> geopandas.GeoDataFrame
+```
+
+Fetch data from one or more sources for the given points.
+
+`end_depth` (in cm) is required for POLARIS.
+
+`year` and `month` are required for Sentinel-2 NDVI.
+
+**Example**:
+
+  
+```python
+point_data = fetch_point_data(
+    "points.geojson",
+    values_to_fetch=["polaris_carbon_stock", "sentinel2_ndvi"],
+    end_depth=30,
+    year=2024,
+    month=9,
+)
+```
 
 <a id="demeter.raster"></a>
 
