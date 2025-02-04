@@ -87,8 +87,14 @@ def reproject(
         # Shift the transform to align with the given transform's pixel grid:
         dst_transform = _align_transform(dst_transform, align_to_transform)
 
+    # `rasterio.warp.reproject` doesn't work on masked arrays without a mask.
+    # Reproject the underlying ndarray instead:
+    array_to_reproject = raster.pixels
+    if not numpy.ma.is_masked(array_to_reproject):
+        array_to_reproject = array_to_reproject.data
+
     pixels, transform = rasterio.warp.reproject(
-        raster.pixels,
+        array_to_reproject,
         destination,
         src_crs=raster.crs,
         src_transform=raster.transform,
@@ -101,7 +107,9 @@ def reproject(
 
     # `rasterio.warp.reproject` doesn't return a masked array, even with
     # `masked=True`. See https://github.com/rasterio/rasterio/pull/3289
-    pixels = numpy.ma.masked_equal(pixels, raster.pixels.fill_value)
+    pixels = numpy.ma.masked_equal(
+        pixels, raster.pixels.fill_value.astype(pixels.dtype)
+    )
 
     return Raster(pixels, transform, crs)
 

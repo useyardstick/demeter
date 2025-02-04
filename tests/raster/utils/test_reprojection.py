@@ -1,3 +1,6 @@
+import numpy
+import pytest
+
 from demeter.raster import Raster
 from demeter.raster.utils.reprojection import (
     align,
@@ -7,20 +10,36 @@ from demeter.raster.utils.reprojection import (
 )
 
 
-def test_reproject():
-    raster = Raster.from_file("tests/raster/fixtures/humboldt_park_elevation.tif")
-    reprojected = reproject(raster, crs="EPSG:5070", resampling_method="average")
+@pytest.fixture
+def elevation_raster():
+    return Raster.from_file("tests/raster/fixtures/humboldt_park_elevation.tif")
+
+
+def test_reproject(elevation_raster):
+    reprojected = reproject(
+        elevation_raster, crs="EPSG:5070", resampling_method="average"
+    )
     assert reprojected.crs == "EPSG:5070"
-    assert reprojected.shape != raster.shape
-    assert round(reprojected.pixels.mean()) == round(raster.pixels.mean())
+    assert reprojected.shape != elevation_raster.shape
+    assert round(reprojected.pixels.mean()) == round(elevation_raster.pixels.mean())
 
 
-def test_align():
-    elevation = Raster.from_file("tests/raster/fixtures/humboldt_park_elevation.tif")
+def test_reproject_unmasked(elevation_raster):
+    unmasked = numpy.ma.masked_array(elevation_raster.pixels.filled(numpy.nan))
+    unmasked_raster = Raster(unmasked, elevation_raster.transform, elevation_raster.crs)
+    reprojected = reproject(
+        unmasked_raster, crs="EPSG:5070", resampling_method="average"
+    )
+    assert reprojected.crs == "EPSG:5070"
+    assert reprojected.shape != elevation_raster.shape
+    assert round(reprojected.pixels.mean()) == round(elevation_raster.pixels.mean())
+
+
+def test_align(elevation_raster):
     flow_direction = Raster.from_file("tests/raster/fixtures/humboldt_park_fdr.tif")
 
     reprojected_elevation = reproject(
-        elevation, crs="EPSG:5070", resampling_method="average"
+        elevation_raster, crs="EPSG:5070", resampling_method="average"
     )
     assert reprojected_elevation.crs == flow_direction.crs
     assert reprojected_elevation.transform != flow_direction.transform
@@ -31,7 +50,9 @@ def test_align():
     assert aligned_elevation.crs == flow_direction.crs
     assert aligned_elevation.resolution == flow_direction.resolution == (10, 10)
     assert aligned_elevation.grid_offset == flow_direction.grid_offset
-    assert round(aligned_elevation.pixels.mean()) == round(elevation.pixels.mean())
+    assert round(aligned_elevation.pixels.mean()) == round(
+        elevation_raster.pixels.mean()
+    )
 
 
 def test_reproject_and_merge():
