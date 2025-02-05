@@ -12,7 +12,6 @@
     * [shape](#demeter.raster.Raster.shape)
     * [bounds](#demeter.raster.Raster.bounds)
     * [resolution](#demeter.raster.Raster.resolution)
-    * [grid\_offset](#demeter.raster.Raster.grid_offset)
     * [dtype](#demeter.raster.Raster.dtype)
     * [value\_at](#demeter.raster.Raster.value_at)
     * [values\_at](#demeter.raster.Raster.values_at)
@@ -193,18 +192,6 @@ def resolution() -> tuple[float, float]
 ```
 
 The raster's (x, y) resolution.
-
-<a id="demeter.raster.Raster.grid_offset"></a>
-
-#### grid\_offset
-
-```python
-@property
-def grid_offset() -> tuple[float, float]
-```
-
-The (x, y) offset of this raster's origin point on a grid aligned with
-its resolution.
 
 <a id="demeter.raster.Raster.dtype"></a>
 

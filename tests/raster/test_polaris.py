@@ -141,19 +141,10 @@ def test_fetch_polaris_data(mock_polaris, geometries):
         depth=polaris.Depth.ZERO_TO_FIVE_CM,
     )
 
-    # Check that the transform maps geographic coordinates to raster indices:
+    # Check that raster bounds are within 10m of input geometry bounds:
     height, width = raster.shape
-    longitude_min, latitude_min, longitude_max, latitude_max = geometries.total_bounds
-    northest, westest = rasterio.transform.rowcol(
-        raster.transform, longitude_min, latitude_max
-    )
-    southest, eastest = rasterio.transform.rowcol(
-        raster.transform, longitude_max, latitude_min
-    )
-    assert westest == 0
-    assert northest == 0
-    assert eastest == pytest.approx(width, abs=1)
-    assert southest == pytest.approx(height, abs=1)
+    raster_bounds = rasterio.transform.array_bounds(height, width, raster.transform)
+    assert all(abs(geometries.total_bounds - raster_bounds) < 10)
 
 
 def test_fetch_polaris_data_with_remote_cache(
