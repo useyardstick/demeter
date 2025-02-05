@@ -12,15 +12,8 @@ from rasterio.merge import copy_count, copy_sum
 from demeter.raster import Raster
 from demeter.raster.utils.transform import (
     align_bounds_to_transform,
-    extract_grid_offset_from_transform,
-    extract_resolution_from_transform,
+    aligned_pixel_grids,
 )
-
-# To merge without resampling, all rasters must be on the same pixel grid.
-# Sometimes raster grids don't align perfectly because of rounding issues. As
-# long as they match to within this many digits after the decimal, we assume
-# they align enough to avoid resampling when merging.
-_PIXEL_GRID_ROUNDING_DIGITS = 7  # ~1cm precision for lat/lng coordinates
 
 
 def merge(
@@ -127,14 +120,26 @@ def _merge(
     if crs is None:
         raise ValueError("Rasters have no CRS")
 
-    # To merge without resampling, all rasters must be on the same pixel grid:
+    # To merge without resampling, all rasters must be on the same pixel grid.
+    # Rasterio doesn't provide a way to enforce this when merging, so check
+    # first:
     if not allow_resampling:
-        transforms = [transform]
-        for source in sources[1:]:
+        xs = []
+        ys = []
+        transforms = []
+        for source in sources:
             with dataset_opener(source) as dataset:
                 transforms.append(dataset.transform)
+                left, bottom, right, top = dataset.bounds
+                xs += [left, right]
+                ys += [bottom, top]
 
-        _require_aligned_pixel_grids(transforms)
+        extent = min(xs), min(ys), max(xs), max(ys)
+
+        if not aligned_pixel_grids(extent, transforms):
+            raise ValueError(
+                "Rasters must be on the same pixel grid to merge without resampling"
+            )
 
     # If bounds are given, snap them to the first raster's pixel grid:
     if bounds:
@@ -167,28 +172,6 @@ def _merge(
         return _mean_from_sum_and_count(raster)
 
     return raster
-
-
-def _require_aligned_pixel_grids(transforms: Iterable[rasterio.Affine]):
-    # Transforms are aligned if they have the same resolution and grid offset.
-    resolutions = [
-        extract_resolution_from_transform(transform) for transform in transforms
-    ]
-    if len(set(resolutions)) > 1:
-        raise ValueError("Rasters must have the same resolution to avoid resampling")
-
-    grid_offsets = [
-        extract_grid_offset_from_transform(transform) for transform in transforms
-    ]
-
-    # Sometimes raster grids don't align perfectly because of rounding issues.
-    # Check that they're close enough:
-    grid_offsets_rounded = [
-        tuple(row)
-        for row in numpy.array(grid_offsets).round(_PIXEL_GRID_ROUNDING_DIGITS)
-    ]
-    if len(set(grid_offsets_rounded)) > 1:
-        raise ValueError("Rasters must have the same grid offsets to avoid resampling")
 
 
 def _mean_from_sum_and_count(raster: Raster) -> Raster:

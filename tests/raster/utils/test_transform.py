@@ -3,8 +3,19 @@ from rasterio import Affine
 
 from demeter.raster.utils.transform import (
     align_bounds_to_transform,
+    aligned_pixel_grids,
     extract_resolution_from_transform,
 )
+
+
+@pytest.fixture
+def bounds():
+    return (
+        -87.70684656839217,
+        41.90305914410823,
+        -87.69698317121978,
+        41.91004667088552,
+    )
 
 
 @pytest.fixture
@@ -56,3 +67,31 @@ def test_align_bounds_to_transform(transform):
     bottom_row = (aligned_bottom - transform.yoff) / -yres
     assert top_row == pytest.approx(round(top_row))
     assert bottom_row == pytest.approx(round(bottom_row))
+
+
+def test_aligned_pixel_grids_exact(bounds, transform):
+    assert aligned_pixel_grids(bounds, [transform, transform])
+
+
+def test_aligned_pixel_grids_slightly_different_resolution(bounds, transform):
+    a, b, c, d, e, f, *_ = transform
+    other_transform = Affine(a + 1e-12, b, c, d, e, f)
+    assert aligned_pixel_grids(bounds, [transform, other_transform])
+
+
+def test_aligned_pixel_grids_slightly_different_offset(bounds, transform):
+    a, b, c, d, e, f, *_ = transform
+    other_transform = Affine(a, b, c + 1e-7, d, e, f)
+    assert aligned_pixel_grids(bounds, [transform, other_transform])
+
+
+def test_aligned_pixel_grids_different_resolution(bounds, transform):
+    a, b, c, d, e, f, *_ = transform
+    other_transform = Affine(a + 1e-8, b, c, d, e, f)
+    assert not aligned_pixel_grids(bounds, [transform, other_transform])
+
+
+def test_aligned_pixel_grids_different_offset(bounds, transform):
+    a, b, c, d, e, f, *_ = transform
+    other_transform = Affine(a, b, c + 5e-5, d, e, f)
+    assert not aligned_pixel_grids(bounds, [transform, other_transform])

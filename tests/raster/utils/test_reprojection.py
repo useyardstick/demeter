@@ -8,6 +8,7 @@ from demeter.raster.utils.reprojection import (
     reproject,
     reproject_and_merge,
 )
+from demeter.raster.utils.transform import aligned_pixel_grids
 
 
 @pytest.fixture
@@ -49,7 +50,9 @@ def test_align(elevation_raster):
     )
     assert aligned_elevation.crs == flow_direction.crs
     assert aligned_elevation.resolution == flow_direction.resolution == (10, 10)
-    assert aligned_elevation.grid_offset == flow_direction.grid_offset
+    assert aligned_pixel_grids(
+        flow_direction.bounds, [flow_direction.transform, aligned_elevation.transform]
+    )
     assert round(aligned_elevation.pixels.mean()) == round(
         elevation_raster.pixels.mean()
     )
@@ -92,5 +95,7 @@ def test_align_and_merge():
         ndvi_rasters
     )
     assert reprojected.resolution == flow_direction.resolution == (10, 10)
-    assert reprojected.grid_offset == flow_direction.grid_offset
+    assert aligned_pixel_grids(
+        flow_direction.bounds, [flow_direction.transform, reprojected.transform]
+    )
     assert round(reprojected.pixels.mean(), 1) == round(original_mean, 1)
