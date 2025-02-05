@@ -46,7 +46,11 @@ def fetch_and_merge_rasters(
     rasters = list(fetch_rasters(geometries))
 
     return merge_and_crop_rasters(
-        rasters, crop_to=geometries.to_crs(RASTER_CRS) if crop else None
+        rasters,
+        crop_to=geometries.to_crs(RASTER_CRS) if crop else None,
+        # USGS elevation rasters are not all on exactly the same pixel grid.
+        # Allow resampling so we can merge them anyway.
+        allow_resampling=True,
     )
 
 

@@ -122,35 +122,23 @@ def _merge(
     with dataset_opener(first_source) as dataset:
         crs = dataset.crs
         num_bands = dataset.count
+        transform = dataset.transform
 
     if crs is None:
         raise ValueError("Rasters have no CRS")
 
     # To merge without resampling, all rasters must be on the same pixel grid:
     if not allow_resampling:
-        transforms = []
-        for source in sources:
+        transforms = [transform]
+        for source in sources[1:]:
             with dataset_opener(source) as dataset:
                 transforms.append(dataset.transform)
 
         _require_aligned_pixel_grids(transforms)
 
-        # If bounds are given, snap them to the rasters' common pixel grid:
-        if bounds:
-            aligned_bounds = [
-                align_bounds_to_transform(bounds, transform) for transform in transforms
-            ]
-            # Sometimes raster grids don't align perfectly because of rounding
-            # issues. As long as the bounds are close enough, we're good:
-            aligned_bounds_rounded = [
-                tuple(row)
-                for row in numpy.array(aligned_bounds).round(
-                    _PIXEL_GRID_ROUNDING_DIGITS
-                )
-            ]
-            aligned_bounds_unique = set(aligned_bounds_rounded)
-            assert len(aligned_bounds_unique) == 1
-            bounds = aligned_bounds_unique.pop()
+    # If bounds are given, snap them to the first raster's pixel grid:
+    if bounds:
+        bounds = align_bounds_to_transform(bounds, transform)
 
     calculating_mean = method == "mean"
     if calculating_mean:
