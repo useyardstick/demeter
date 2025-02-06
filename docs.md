@@ -497,15 +497,22 @@ mapping of pixel counts from the sidecar DBF file.
 #### fetch\_and\_merge\_rasters
 
 ```python
-def fetch_and_merge_rasters(raster_filename: str,
+def fetch_and_merge_rasters(raster_filename: Union[str, list[str]],
                             geometries: Union[str, geopandas.GeoDataFrame,
                                               geopandas.GeoSeries],
-                            crop: bool = True) -> USGSHydrographyRaster
+                            crop: bool = True)
 ```
 
 Fetch the given raster (e.g. "cat.tif") from USGS for the given geometries.
 If the geometries span multiple HU4 regions, fetch all the necessary
 rasters and stitch them together.
+
+Pass multiple raster filenames as a list to fetch multiple rasters for the
+same geometries. For example:
+
+```python
+cat, fdr = fetch_and_merge_rasters(["cat.tif", "fdr.tif"], "path/to/boundaries.geojson")
+```
 
 If `crop` is True (the default), crop the output raster to the given
 geometries.

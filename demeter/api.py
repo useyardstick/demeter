@@ -174,8 +174,10 @@ def _hydro_data_from_usgs(points: geopandas.GeoSeries) -> pandas.DataFrame:
     points_in_usgs_hydro_crs = points.to_crs(usgs.hydrography.RASTER_CRS)
 
     rasters = (
-        usgs.hydrography.fetch_and_merge_rasters(name, points_in_usgs_hydro_crs).raster
-        for name in ("cat", "fac", "fdr")
+        hydro_raster.raster
+        for hydro_raster in usgs.hydrography.fetch_and_merge_rasters(
+            ["cat", "fac", "fdr"], points_in_usgs_hydro_crs
+        )
     )
     point_values = (
         [raster.value_at(point.x, point.y) for point in points_in_usgs_hydro_crs]
