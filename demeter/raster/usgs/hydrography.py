@@ -18,6 +18,7 @@ catchment_areas_in_m2 = {
 ```
 """
 
+import json
 import math
 import os
 import re
@@ -32,6 +33,8 @@ from zipfile import ZipFile
 import geopandas
 import numpy
 import rasterio
+import requests
+import shapely.geometry
 from dbfread import DBF
 
 from demeter.raster import Raster
@@ -41,17 +44,6 @@ from demeter.raster.usgs.utils import (
     merge_and_crop_rasters,
     s3_client,
 )
-
-# USGS rasters are organized by 4-digit Hydrologic Unit (HU4). To know which
-# rasters to download, we need to identify which HU4 regions the input geometry
-# intersects with. To do this, I extracted the HU4 layer from USGS' Watershed
-# Boundary Dataset (WBD) and removed features outside the CONUS:
-# https://prd-tnm.s3.amazonaws.com/index.html?prefix=StagedProducts/Hydrography/WBD/National/
-#
-# To keep this file under GitHub's 100mb size limit, I converted it to topojson
-# (https://github.com/topojson/topojson) and compressed it.
-# TODO: project to EPSG:5070
-HU4_CONUS_PATH = os.path.join(os.path.dirname(__file__), "hu4_conus.zip")
 
 # USGS hydrography rasters are stored in S3 under:
 S3_PREFIX = "StagedProducts/Hydrography/NHDPlusHR/VPU/Current/Raster/"
@@ -261,31 +253,48 @@ def find_hu4_codes(
     """
     Return the HU4 codes for the regions that intersect with the given
     geometries.
+
+    USGS rasters are organized by 4-digit Hydrologic Unit (HU4). To know which
+    rasters to download, we need to identify which HU4 regions the input geometry
+    intersects with.
     """
     if isinstance(geometries, str):
         geometries = geopandas.read_file(geometries)
 
     assert isinstance(geometries, (geopandas.GeoSeries, geopandas.GeoDataFrame))
 
-    # TODO: project both input geometries and HU4 regions to EPSG:5070 first
-    # for more accurate intersection in CONUS
-    projected_geometries = geometries.geometry.to_crs(epsg=4269)
-    projected_geometries_union = projected_geometries.unary_union
-    hu4_regions = geopandas.read_file(
-        HU4_CONUS_PATH,
-        mask=projected_geometries_union,
+    # Query the USGS Watershed Boundary Dataset (WBD) web service for the HU4
+    # regions that intersect with the geometries. This web service errors out
+    # if we try to query using a large geo file, so use the bounding box:
+    geometries_in_4326 = geometries.to_crs("EPSG:4326")
+    geometries_combined = geometries_in_4326.unary_union
+    bounding_box = shapely.geometry.box(*geometries_combined.bounds)
+    bounding_box_as_ersi_json = {"rings": bounding_box.__geo_interface__["coordinates"]}
+    response = requests.get(
+        "https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/2/query",
+        params={
+            "geometry": json.dumps(bounding_box_as_ersi_json),
+            "geometryType": "esriGeometryPolygon",
+            "inSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "HUC4,Name",
+            "returnGeometry": "true",
+            "f": "GeoJSON",
+        },
     )
+    response.raise_for_status()
+    hu4_regions = geopandas.GeoDataFrame.from_features(response.json())
 
-    # The `mask` argument to `geopandas.read_file` should ensure we only read
-    # HU4 regions that intersect with the geometries, but in older versions of
-    # GeoPandas we sometimes get a few extra regions as well. Filter them out:
-    hu4_regions = hu4_regions[hu4_regions.intersects(projected_geometries_union)]
+    # We fetched all HU4 regions that intersect with the bounding box of the
+    # geometries, but we only need the ones that intersect with the geometries
+    # themselves:
+    hu4_regions = hu4_regions[hu4_regions.intersects(geometries_combined)]
 
     if hu4_regions.empty:
         raise ValueError("No HU4 regions found for geometries. Are they in CONUS?")
 
     geometries_without_hu4_region = geometries[
-        projected_geometries.disjoint(hu4_regions.unary_union)
+        geometries_in_4326.disjoint(hu4_regions.unary_union)
     ]
     if not geometries_without_hu4_region.empty:
         raise ValueError(

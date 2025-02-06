@@ -15,7 +15,7 @@ def geometries():
     return geopandas.read_file("tests/fixtures/tango_oscar.geojson")
 
 
-def test_find_hu4_codes(geometries):
+def test_find_hu4_codes(geometries, record_or_replay_requests):
     assert sorted(find_hu4_codes(geometries)) == ["1022", "1023"]
 
 

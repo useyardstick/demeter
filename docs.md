@@ -536,6 +536,10 @@ def find_hu4_codes(
 Return the HU4 codes for the regions that intersect with the given
 geometries.
 
+USGS rasters are organized by 4-digit Hydrologic Unit (HU4). To know which
+rasters to download, we need to identify which HU4 regions the input geometry
+intersects with.
+
 <a id="demeter.raster.usgs.hydrography.download_raster_archives"></a>
 
 #### download\_raster\_archives
