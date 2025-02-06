@@ -3,6 +3,7 @@ import os
 import boto3
 from botocore import UNSIGNED
 from botocore.client import Config
+from filelock import FileLock
 
 from demeter.raster import Raster
 from demeter.raster.usgs.constants import CACHED_RASTER_FILES_DIRECTORY, S3_BUCKET_NAME
@@ -15,13 +16,15 @@ s3_client = boto3.client("s3", config=Config(signature_version=UNSIGNED))
 
 def download_from_s3(key: str) -> str:
     local_path = os.path.join(CACHED_RASTER_FILES_DIRECTORY, key)
-    if os.path.exists(local_path):
-        # TODO: check if file in cache is stale
-        print(f"Cache hit: {local_path}")
-    else:
-        print(f"Downloading s3://{S3_BUCKET_NAME}/{key}")
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
-        s3_client.download_file(S3_BUCKET_NAME, key, local_path)
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
+    with FileLock(f"{local_path}.lock", timeout=60):
+        if os.path.exists(local_path):
+            # TODO: check if file in cache is stale
+            print(f"Cache hit: {local_path}")
+        else:
+            print(f"Downloading s3://{S3_BUCKET_NAME}/{key}")
+            s3_client.download_file(S3_BUCKET_NAME, key, local_path)
 
     return local_path
 
