@@ -1,8 +1,33 @@
+import threading
+from collections.abc import Iterable
 from typing import Union
 
 import geopandas
 import numpy
 import pandas
+
+
+class Lazy(Iterable):
+    """
+    Lazy iterator that can be replayed. Accumulates its items in an internal
+    list, then replays from that list on subsequent iterations.
+    """
+
+    def __init__(self, iterable):
+        self._iterable = iterable
+        self._accumulator = []
+        self._lock = threading.Lock()
+        self._complete = False
+
+    def __iter__(self):
+        if self._complete:
+            yield from self._accumulator
+        else:
+            with self._lock:
+                for item in self._iterable:
+                    self._accumulator.append(item)
+                    yield item
+                self._complete = True
 
 
 def bounds_snapped_to_grid(

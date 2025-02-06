@@ -86,7 +86,7 @@ def s3(requests_mock):
         yield boto3.client("s3")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def copernicus_s3_credentials(save_test_fixtures, monkeypatch):
     if save_test_fixtures:
         if not os.environ.get("COPERNICUS_AWS_ENDPOINT_URL"):
@@ -102,7 +102,7 @@ def copernicus_s3_credentials(save_test_fixtures, monkeypatch):
 
 
 @pytest.fixture
-def copernicus_s3(save_test_fixtures, requests_mock):
+def copernicus_s3(save_test_fixtures, requests_mock, copernicus_s3_credentials):
     if save_test_fixtures:
         yield None
     else:

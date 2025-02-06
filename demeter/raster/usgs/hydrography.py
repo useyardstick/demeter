@@ -18,20 +18,23 @@ catchment_areas_in_m2 = {
 ```
 """
 
+import json
 import math
 import os
 import re
 import warnings
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Generator, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from tempfile import TemporaryDirectory
-from typing import Union
+from typing import Optional, Union, overload
 from zipfile import ZipFile
 
 import geopandas
 import numpy
 import rasterio
+import requests
+import shapely.geometry
 from dbfread import DBF
 
 from demeter.raster import Raster
@@ -41,17 +44,7 @@ from demeter.raster.usgs.utils import (
     merge_and_crop_rasters,
     s3_client,
 )
-
-# USGS rasters are organized by 4-digit Hydrologic Unit (HU4). To know which
-# rasters to download, we need to identify which HU4 regions the input geometry
-# intersects with. To do this, I extracted the HU4 layer from USGS' Watershed
-# Boundary Dataset (WBD) and removed features outside the CONUS:
-# https://prd-tnm.s3.amazonaws.com/index.html?prefix=StagedProducts/Hydrography/WBD/National/
-#
-# To keep this file under GitHub's 100mb size limit, I converted it to topojson
-# (https://github.com/topojson/topojson) and compressed it.
-# TODO: project to EPSG:5070
-HU4_CONUS_PATH = os.path.join(os.path.dirname(__file__), "hu4_conus.zip")
+from demeter.utils import Lazy
 
 # USGS hydrography rasters are stored in S3 under:
 S3_PREFIX = "StagedProducts/Hydrography/NHDPlusHR/VPU/Current/Raster/"
@@ -77,35 +70,84 @@ class MissingCatchmentIDWarning(Warning):
     pass
 
 
+@overload
 def fetch_and_merge_rasters(
     raster_filename: str,
     geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
     crop: bool = True,
-) -> USGSHydrographyRaster:
+) -> USGSHydrographyRaster: ...
+
+
+@overload
+def fetch_and_merge_rasters(
+    raster_filename: list[str],
+    geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    crop: bool = True,
+) -> Iterable[USGSHydrographyRaster]: ...
+
+
+def fetch_and_merge_rasters(
+    raster_filename: Union[str, list[str]],
+    geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    crop: bool = True,
+):
     """
     Fetch the given raster (e.g. "cat.tif") from USGS for the given geometries.
     If the geometries span multiple HU4 regions, fetch all the necessary
     rasters and stitch them together.
 
+    Pass multiple raster filenames as a list to fetch multiple rasters for the
+    same geometries. For example:
+
+    ```python
+    cat, fdr = fetch_and_merge_rasters(["cat.tif", "fdr.tif"], "path/to/boundaries.geojson")
+    ```
+
     If `crop` is True (the default), crop the output raster to the given
     geometries.
     """
+    if isinstance(raster_filename, str):
+        return next(_fetch_and_merge_rasters([raster_filename], geometries, crop))
+
+    return _fetch_and_merge_rasters(raster_filename, geometries, crop)
+
+
+def _fetch_and_merge_rasters(
+    raster_filenames: list[str],
+    geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    crop: bool = True,
+) -> Generator[USGSHydrographyRaster]:
     if isinstance(geometries, str):
         geometries = geopandas.read_file(geometries)
 
     assert isinstance(geometries, (geopandas.GeoSeries, geopandas.GeoDataFrame))
 
+    downloaded_archive_paths = Lazy(fetch_rasters(geometries))
+
+    for raster_filename in raster_filenames:
+        yield _extract_raster(
+            raster_filename,
+            downloaded_archive_paths,
+            crop_to=geometries.to_crs(RASTER_CRS) if crop else None,
+        )
+
+
+def _extract_raster(
+    raster_filename: str,
+    archive_paths: Iterable[str],
+    crop_to: Optional[Union[geopandas.GeoDataFrame, geopandas.GeoSeries]],
+) -> USGSHydrographyRaster:
+    if crop_to is not None:
+        assert str(crop_to.crs) == RASTER_CRS
+
     if not raster_filename.endswith(".tif"):
         raster_filename = f"{raster_filename}.tif"
-
-    downloaded_archive_paths = fetch_rasters(geometries)
-    projected_geometries = geometries.to_crs(RASTER_CRS)
 
     with TemporaryDirectory() as tmpdir:
         # Extract rasters and sidecar .vat.dbf files to a temporary directory:
         raster_paths = []
         all_rasters_have_sidecar_dbf = True
-        for archive_path in downloaded_archive_paths:
+        for archive_path in archive_paths:
             with ZipFile(archive_path) as zip_archive:
                 raster_path = _find_raster_path_in_archive(zip_archive, raster_filename)
                 print(f"Extracting {raster_path}")
@@ -122,8 +164,8 @@ def fetch_and_merge_rasters(
             # pixel, which maps to a global catchment area ID. The mapping is
             # stored in a sidecar .vat.dbf file; read it and use it to map each
             # pixel in the raster to the full catchment ID.
-            if crop:
-                minx, miny, maxx, maxy = projected_geometries.total_bounds
+            if crop_to is not None:
+                minx, miny, maxx, maxy = crop_to.total_bounds
                 bounds = (
                     math.floor(minx),
                     math.floor(miny),
@@ -229,9 +271,7 @@ def fetch_and_merge_rasters(
                         value, count = _extract_value_and_count_from_dbf_record(record)
                         counts[value] += count
 
-        merged = merge_and_crop_rasters(
-            raster_paths, crop_to=projected_geometries if crop else None
-        )
+        merged = merge_and_crop_rasters(raster_paths, crop_to=crop_to)
 
     return USGSHydrographyRaster(raster_filename, merged, counts)
 
@@ -261,31 +301,48 @@ def find_hu4_codes(
     """
     Return the HU4 codes for the regions that intersect with the given
     geometries.
+
+    USGS rasters are organized by 4-digit Hydrologic Unit (HU4). To know which
+    rasters to download, we need to identify which HU4 regions the input geometry
+    intersects with.
     """
     if isinstance(geometries, str):
         geometries = geopandas.read_file(geometries)
 
     assert isinstance(geometries, (geopandas.GeoSeries, geopandas.GeoDataFrame))
 
-    # TODO: project both input geometries and HU4 regions to EPSG:5070 first
-    # for more accurate intersection in CONUS
-    projected_geometries = geometries.geometry.to_crs(epsg=4269)
-    projected_geometries_union = projected_geometries.unary_union
-    hu4_regions = geopandas.read_file(
-        HU4_CONUS_PATH,
-        mask=projected_geometries_union,
+    # Query the USGS Watershed Boundary Dataset (WBD) web service for the HU4
+    # regions that intersect with the geometries. This web service errors out
+    # if we try to query using a large geo file, so use the bounding box:
+    geometries_in_4326 = geometries.to_crs("EPSG:4326")
+    geometries_combined = geometries_in_4326.unary_union
+    bounding_box = shapely.geometry.box(*geometries_combined.bounds)
+    bounding_box_as_ersi_json = {"rings": bounding_box.__geo_interface__["coordinates"]}
+    response = requests.get(
+        "https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/2/query",
+        params={
+            "geometry": json.dumps(bounding_box_as_ersi_json),
+            "geometryType": "esriGeometryPolygon",
+            "inSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "HUC4,Name",
+            "returnGeometry": "true",
+            "f": "GeoJSON",
+        },
     )
+    response.raise_for_status()
+    hu4_regions = geopandas.GeoDataFrame.from_features(response.json())
 
-    # The `mask` argument to `geopandas.read_file` should ensure we only read
-    # HU4 regions that intersect with the geometries, but in older versions of
-    # GeoPandas we sometimes get a few extra regions as well. Filter them out:
-    hu4_regions = hu4_regions[hu4_regions.intersects(projected_geometries_union)]
+    # We fetched all HU4 regions that intersect with the bounding box of the
+    # geometries, but we only need the ones that intersect with the geometries
+    # themselves:
+    hu4_regions = hu4_regions[hu4_regions.intersects(geometries_combined)]
 
     if hu4_regions.empty:
         raise ValueError("No HU4 regions found for geometries. Are they in CONUS?")
 
     geometries_without_hu4_region = geometries[
-        projected_geometries.disjoint(hu4_regions.unary_union)
+        geometries_in_4326.disjoint(hu4_regions.unary_union)
     ]
     if not geometries_without_hu4_region.empty:
         raise ValueError(
