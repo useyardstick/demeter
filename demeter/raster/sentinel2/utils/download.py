@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 import boto3
+from filelock import FileLock
 
 from demeter.raster.sentinel2.constants import S3_BUCKET_NAME
 
@@ -62,12 +63,14 @@ def _download_from_s3(s3_client, cache_directory, key: str) -> str:
     assert key.startswith(S3_PREFIX)
 
     local_path = os.path.join(cache_directory, key)
-    if os.path.exists(local_path):
-        # TODO: verify checksum from manifest to see if file in cache is stale
-        print(f"Cache hit: {local_path}")
-    else:
-        print(f"Downloading s3://{S3_BUCKET_NAME}/{key}")
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
-        s3_client.download_file(S3_BUCKET_NAME, key, local_path)
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
+    with FileLock(f"{local_path}.lock", timeout=60):
+        if os.path.exists(local_path):
+            # TODO: verify checksum from manifest to see if file in cache is stale
+            print(f"Cache hit: {local_path}")
+        else:
+            print(f"Downloading s3://{S3_BUCKET_NAME}/{key}")
+            s3_client.download_file(S3_BUCKET_NAME, key, local_path)
 
     return local_path

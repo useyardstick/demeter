@@ -36,6 +36,7 @@ from typing import Optional, Union
 import geopandas
 import numpy
 import smart_open
+from filelock import FileLock
 
 from demeter.constants import OM_TO_SOC
 from demeter.raster import Raster
@@ -382,50 +383,52 @@ def _download_polaris_tile(
         "POLARIS_CACHED_RASTER_FILES_DIRECTORY", ".polaris_cache"
     )
     local_path = os.path.join(cache_directory, path)
-    if os.path.exists(local_path):
-        print(f"Cache hit: {local_path}")
-        return local_path
-
-    # If not, try to download from the remote cache, if configured:
-    # NOTE: Partial files shouldn't show up in S3, so I don't think there's a race condition here.
-    # https://stackoverflow.com/questions/38173710/amazon-s3-can-clients-see-the-file-before-upload-is-complete
     os.makedirs(os.path.dirname(local_path), exist_ok=True)
-    remote_cache = os.environ.get("POLARIS_REMOTE_CACHE", None)
-    remote_cache_path = (
-        f"{remote_cache.removesuffix('/')}/{path}" if remote_cache else None
-    )
-    if remote_cache_path:
-        try:
-            with (
-                smart_open.open(remote_cache_path, "rb") as remote_cache_file,
-                open(local_path, "wb") as local_file,
-            ):
-                shutil.copyfileobj(remote_cache_file, local_file)
-        except OSError:
-            print(f"Remote cache miss: {remote_cache_path}")
-        else:
-            print(f"Downloaded from remote cache: {remote_cache_path}")
+
+    with FileLock(f"{local_path}.lock", timeout=60):
+        if os.path.exists(local_path):
+            print(f"Cache hit: {local_path}")
             return local_path
 
-    # If we don't have a copy in our remote cache, download from source:
-    remote_path = f"{BASE_URL.removesuffix('/')}/{path}"
-    print(f"Downloading {remote_path}")
-    with (
-        smart_open.open(remote_path, "rb") as remote_file,
-        open(local_path, "wb") as local_file,
-    ):
-        shutil.copyfileobj(remote_file, local_file)
+        # If not, try to download from the remote cache, if configured:
+        # NOTE: Partial files shouldn't show up in S3, so I don't think there's a race condition here.
+        # https://stackoverflow.com/questions/38173710/amazon-s3-can-clients-see-the-file-before-upload-is-complete
+        remote_cache = os.environ.get("POLARIS_REMOTE_CACHE", None)
+        remote_cache_path = (
+            f"{remote_cache.removesuffix('/')}/{path}" if remote_cache else None
+        )
+        if remote_cache_path:
+            try:
+                with (
+                    smart_open.open(remote_cache_path, "rb") as remote_cache_file,
+                    open(local_path, "wb") as local_file,
+                ):
+                    shutil.copyfileobj(remote_cache_file, local_file)
+            except OSError:
+                print(f"Remote cache miss: {remote_cache_path}")
+            else:
+                print(f"Downloaded from remote cache: {remote_cache_path}")
+                return local_path
 
-    # Upload to the remote cache:
-    if remote_cache_path:
-        print(f"Uploading to remote cache: {remote_cache_path}")
+        # If we don't have a copy in our remote cache, download from source:
+        remote_path = f"{BASE_URL.removesuffix('/')}/{path}"
+        print(f"Downloading {remote_path}")
         with (
-            open(local_path, "rb") as local_file,
-            smart_open.open(remote_cache_path, "wb") as remote_cache_file,
+            smart_open.open(remote_path, "rb") as remote_file,
+            open(local_path, "wb") as local_file,
         ):
-            shutil.copyfileobj(local_file, remote_cache_file)
+            shutil.copyfileobj(remote_file, local_file)
 
-    return local_path
+        # Upload to the remote cache:
+        if remote_cache_path:
+            print(f"Uploading to remote cache: {remote_cache_path}")
+            with (
+                open(local_path, "rb") as local_file,
+                smart_open.open(remote_cache_path, "wb") as remote_cache_file,
+            ):
+                shutil.copyfileobj(local_file, remote_cache_file)
+
+        return local_path
 
 
 def _polaris_tile_path(
