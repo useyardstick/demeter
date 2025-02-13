@@ -80,7 +80,7 @@ def find_tiles_for_geometries(
         )
         geometries_projected = geometries_clipped_to_utm_zone.to_crs(
             epsg=int(utm_zone.code)
-        ).unary_union
+        ).union_all()
 
         # Select the minimum number of tiles that cover the input geometries:
         tiles_selected = _select_tiles(tiles_projected, geometries_projected)
@@ -146,7 +146,7 @@ def _select_tiles(
     for tile_count in range(1, len(tiles_intersecting) + 1):
         for tile_ids in combinations(tiles_intersecting.index, tile_count):
             tiles = tiles_intersecting.loc[list(tile_ids)]
-            if tiles.unary_union.covers(geometries_union):
+            if tiles.union_all().covers(geometries_union):
                 return tiles
 
     raise Exception("Could not find tiles that cover the input geometries")
