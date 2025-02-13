@@ -315,7 +315,7 @@ def find_hu4_codes(
     # regions that intersect with the geometries. This web service errors out
     # if we try to query using a large geo file, so use the bounding box:
     geometries_in_4326 = geometries.to_crs("EPSG:4326")
-    geometries_combined = geometries_in_4326.unary_union
+    geometries_combined = geometries_in_4326.union_all()
     bounding_box = shapely.geometry.box(*geometries_combined.bounds)
     bounding_box_as_ersi_json = {"rings": bounding_box.__geo_interface__["coordinates"]}
     response = requests.get(
@@ -342,7 +342,7 @@ def find_hu4_codes(
         raise ValueError("No HU4 regions found for geometries. Are they in CONUS?")
 
     geometries_without_hu4_region = geometries[
-        geometries_in_4326.disjoint(hu4_regions.unary_union)
+        geometries_in_4326.disjoint(hu4_regions.union_all())
     ]
     if not geometries_without_hu4_region.empty:
         raise ValueError(

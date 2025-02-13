@@ -13,14 +13,13 @@ dependencies = [
   "dbfread",
   "defusedxml",
   "filelock",
-  "geopandas",
+  "geopandas ~= 1.0",
   "numpy",
   "pandas",
   "pyproj",
   "rasterio ~= 1.4.3",
   "requests",
-  "rtree",
-  "shapely",
+  "shapely ~= 2.0",
   "smart-open",
 ]
 
@@ -71,17 +70,12 @@ filterwarnings = [
 [[tool.mypy.overrides]]
 module = [
   "dbfread.*",
+  "geopandas.*",
   "rasterio.*",
   "shapely.*",
   "smart_open.*",
 ]
 follow_untyped_imports = true
-
-[[tool.mypy.overrides]]
-module = [
-  "geopandas.*",
-]
-ignore_missing_imports = true
 
 [[tool.pydoc-markdown.loaders]]
 type = "python"
