@@ -11,7 +11,7 @@ from demeter.raster.sentinel2.utils.download import download_keys
 # Example: "S2B_MSIL2A_20240901T172859_N0511_R055_T14TMM_20240901T215725.SAFE"
 SAFE_FILENAME_PATTERN = re.compile(
     r"""\b
-    (?P<mission>S2A|S2B)_                   # S2B
+    (?P<mission>S2[A-Z])_                   # S2B
     (?P<product_level>MSIL2A)_              # MSIL2A
     (?P<datatake_timestamp>\d{8}T\d{6})_    # 20240901T172859
     (?P<processing_baseline>N\d{4})_        # N0511
