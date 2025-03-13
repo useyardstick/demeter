@@ -151,15 +151,21 @@ def fetch_primary_soil_components(
         top_depth_cm=top_depth_cm,
         bottom_depth_cm=bottom_depth_cm,
     )
-    horizons_aggregated = (
-        horizons.groupby("component_key")
-        .apply(
-            _depth_weighted_average,  # type: ignore
-            top_depth_cm,
-            bottom_depth_cm,
-            include_groups=False,
-        )
-        .reset_index()
+
+    # Future versions of pandas will stop including the group key in the
+    # arguments passed to `DataFrameGroupBy.apply`. To maintain compatibility
+    # with both older and future versions of pandas, exclude the group key from
+    # the aggregation:
+    # https://pandas.pydata.org/docs/reference/api/pandas.core.groupby.DataFrameGroupBy.apply.html
+    columns_without_component_key = horizons.columns.difference(
+        ["component_key"], sort=False
+    )
+    horizons_aggregated = horizons.groupby("component_key")[
+        columns_without_component_key
+    ].apply(
+        _depth_weighted_average,  # type: ignore
+        top_depth_cm,
+        bottom_depth_cm,
     )
     primary_components = primary_components.merge(
         horizons_aggregated,
