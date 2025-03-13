@@ -21,6 +21,7 @@ dependencies = [
   "requests",
   "shapely ~= 2.0",
   "smart-open",
+  "sqlalchemy",
 ]
 
 [build-system]
@@ -91,6 +92,7 @@ modules = [
   "demeter.raster.utils.mask",
   "demeter.raster.utils.merge",
   "demeter.raster.utils.reprojection",
+  "demeter.vector.usda.ssurgo",
 ]
 
 [tool.pydoc-markdown.renderer]

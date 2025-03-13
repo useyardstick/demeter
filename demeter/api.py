@@ -17,6 +17,7 @@ def fetch_point_data(
             "sentinel2_ndvi",
             "usgs_hydrography",
             "usgs_topography",
+            # TODO: add SSURGO
         ]
     ],
     *,
