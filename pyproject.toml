@@ -75,6 +75,7 @@ module = [
   "rasterio.*",
   "shapely.*",
   "smart_open.*",
+  "sqlalchemy.*",
 ]
 follow_untyped_imports = true
 
