@@ -305,13 +305,9 @@ def _copy_test_fixture(raster_path, cache_directory, fixture_directory, crop_to=
         assert transform == profile["transform"]
 
         # Save the masked raster as a test fixture:
-        with rasterio.open(
-            fixture_path,
-            mode="w",
-            quality=100,
-            reversible="YES",
-            **profile,
-        ) as dst:
+        if fixture_path.endswith(".jp2"):
+            profile.update(quality=100, reversible="YES")
+        with rasterio.open(fixture_path, mode="w", **profile) as dst:
             dst.write(array)
 
     print(f"Saved test fixture to {fixture_path}")

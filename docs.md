@@ -68,25 +68,25 @@
 #### fetch\_point\_data
 
 ```python
-def fetch_point_data(
-        points: Union[str, geopandas.GeoSeries, geopandas.GeoDataFrame],
-        values_to_fetch: Collection[Literal[
-            "polaris_carbon_stock",
-            "sentinel2_ndvi",
-            "usgs_hydrography",
-            "usgs_topography",
-            # TODO: add SSURGO
-        ]],
-        *,
-        start_depth: int = 0,
-        end_depth: Optional[int] = None,
-        year: Optional[int] = None,
-        month: Optional[int] = None) -> geopandas.GeoDataFrame
+def fetch_point_data(points: Union[str, geopandas.GeoSeries,
+                                   geopandas.GeoDataFrame],
+                     values_to_fetch: Collection[Literal[
+                         "polaris_carbon_stock",
+                         "sentinel2_ndvi",
+                         "usgs_hydrography",
+                         "usgs_topography",
+                         "ssurgo_primary_component",
+                     ]],
+                     *,
+                     start_depth: int = 0,
+                     end_depth: Optional[int] = None,
+                     year: Optional[int] = None,
+                     month: Optional[int] = None) -> geopandas.GeoDataFrame
 ```
 
 Fetch data from one or more sources for the given points.
 
-`end_depth` (in cm) is required for POLARIS.
+`end_depth` (in cm) is required for POLARIS and SSURGO.
 
 `year` and `month` are required for Sentinel-2 NDVI.
 

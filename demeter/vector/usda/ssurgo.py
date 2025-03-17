@@ -179,7 +179,6 @@ def fetch_primary_soil_components(
             fragments[fragments["fragment_kind"].notna()]
             .groupby("horizon_key")["fragment_kind"]
             .unique()
-            .apply(_concat)
         )
         .reset_index()
     )
@@ -206,8 +205,7 @@ def fetch_primary_soil_components(
         .join(
             horizons[horizons["fragment_kind"].notna()]
             .groupby("component_key")["fragment_kind"]
-            .unique()
-            .apply(_concat)
+            .agg(_concat_unique_values)
         )
     )
 
@@ -302,5 +300,5 @@ def _series_to_masked_array(series: pandas.Series) -> numpy.ma.MaskedArray:
     return numpy.ma.masked_array(series, mask=series.isna())
 
 
-def _concat(strings):
-    return ", ".join(sorted(strings))
+def _concat_unique_values(strings: pandas.Series) -> str:
+    return ", ".join(sorted(strings.explode().unique()))
