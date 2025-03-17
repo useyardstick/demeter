@@ -49,7 +49,17 @@ def test_fetch_primary_soil_components(record_or_replay_requests, geometries):
                     26040127,
                     26040173,
                 ],
-                "component_percent": [85, 85, 85, 85, 85, 85, 85, 85, 85],
+                "component_percent": [
+                    85,
+                    85,
+                    85,
+                    85,
+                    85,
+                    85,
+                    85,
+                    85,
+                    85,
+                ],
                 "component_name": [
                     "Dinuba",
                     "Dinuba",
@@ -216,5 +226,8 @@ def test_fetch_primary_soil_components(record_or_replay_requests, geometries):
                     "Igneous rock fragments",
                 ],
             }
-        ).convert_dtypes(),
+        ).convert_dtypes(
+            convert_integer=False,
+            convert_floating=False,
+        ),
     )

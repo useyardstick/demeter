@@ -218,7 +218,15 @@ def fetch_primary_soil_components(
         how="left",
         on="component_key",
         validate="one_to_one",
-    ).convert_dtypes()  # use best possible dtypes
+    )
+
+    # Use best possible dtypes. Exclude numeric types here, as matplotlib seems
+    # to struggle with them:
+    primary_components = primary_components.convert_dtypes(
+        convert_integer=False,
+        convert_floating=False,
+    )
+
     assert isinstance(primary_components, geopandas.GeoDataFrame)
 
     if crop:
