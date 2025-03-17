@@ -14,7 +14,7 @@ def geometries():
 def test_fetch_primary_soil_components(record_or_replay_requests, geometries):
     primary_soil_components = fetch_primary_soil_components(
         geometries, bottom_depth_cm=100
-    ).sort_values("map_unit_key", ignore_index=True)
+    )
 
     # Check that the returned GeoDataFrame matches the input geometries:
     geometries_projected = geometries.to_crs("EPSG:5070").geometry.union_all()
@@ -193,6 +193,28 @@ def test_fetch_primary_soil_components(record_or_replay_requests, geometries):
                     3.0,
                     8.0,
                 ],
+                "fragment_percent_by_volume": [
+                    2.0,
+                    2.0,
+                    2.0,
+                    2.0,
+                    None,
+                    None,
+                    None,
+                    2.0,
+                    5.0,
+                ],
+                "fragment_kind": [
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    "Igneous rock fragments",
+                ],
             }
-        ),
+        ).convert_dtypes(),
     )
