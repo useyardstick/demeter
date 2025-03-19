@@ -12,12 +12,12 @@ SOIL_DATA_ACCESS_API_URL = "https://sdmdataaccess.sc.egov.usda.gov/tabular/post.
 
 SQL_DIALECT = mssql.dialect()
 
-PRIMARY_COMPONENT_SQL = """
+PRIMARY_COMPONENTS_SQL = """
 WITH
-  map_unit AS (
+  intersecting_geometries AS (
     SELECT
       geometry::UnionAggregate(mupolygongeo).STAsText() AS geometry,
-      mukey
+      mukey AS map_unit_key
     FROM
       mupolygon
     WHERE
@@ -25,42 +25,41 @@ WITH
     GROUP BY
       mukey
   ),
-  primary_component AS (
-    SELECT TOP 1 WITH TIES
-      *
+  intersecting_map_units AS (
+    SELECT
+      intersecting_geometries.*,
+      mapunit.musym AS map_unit_symbol,
+      mapunit.muname AS map_unit_name
     FROM
-      component
-    WHERE
-      majcompflag = 'Yes'
+      intersecting_geometries
+      LEFT JOIN mapunit ON mapunit.mukey = intersecting_geometries.map_unit_key
+  ),
+  primary_components AS (
+    SELECT TOP 1 WITH TIES
+      intersecting_map_units.*,
+      cokey AS component_key,
+      comppct_r AS component_percent,
+      compname AS component_name,
+      compkind AS component_kind,
+      drainagecl AS drainage_class,
+      taxclname AS taxonomic_class,
+      taxorder AS taxonomic_order
+    FROM
+      intersecting_map_units
+      LEFT JOIN component ON component.mukey = intersecting_map_units.map_unit_key
+      AND component.majcompflag = 'Yes'
     ORDER BY
       ROW_NUMBER() OVER (PARTITION BY mukey ORDER BY comppct_r DESC)
   )
 SELECT
-  map_unit.geometry,
-  map_unit.mukey AS map_unit_key,
-  primary_component.cokey AS component_key,
-  primary_component.comppct_r AS component_percent,
-  primary_component.compname AS component_name,
-  primary_component.compkind AS component_kind,
-  primary_component.drainagecl AS drainage_class,
-  primary_component.taxclname AS taxonomic_class,
-  primary_component.taxorder AS taxonomic_order
-FROM
-  map_unit
-  INNER JOIN primary_component ON map_unit.mukey = primary_component.mukey
-ORDER BY
-  map_unit.mukey
-"""
-
-PARENT_MATERIAL_SQL = """
-SELECT
-  cokey AS component_key,
+  primary_components.*,
   pmgroupname AS parent_material
 FROM
-  copmgrp
-WHERE
-  cokey IN :component_keys
-  AND rvindicator = 'Yes'
+  primary_components
+  LEFT JOIN copmgrp ON copmgrp.cokey = primary_components.component_key
+  AND copmgrp.rvindicator = 'Yes'
+ORDER BY
+  map_unit_key
 """
 
 HORIZONS_SQL = """
@@ -131,11 +130,11 @@ def fetch_primary_soil_components(
 
     assert isinstance(geometries, (geopandas.GeoSeries, geopandas.GeoDataFrame))
 
-    # First, fetch the primary component for each map unit intersecting
-    # with the given geometries:
+    # First, find the primary components for the map units intersecting with
+    # the given geometries:
     geometries_combined = geometries.geometry.union_all()
     primary_components = _send_query(
-        PRIMARY_COMPONENT_SQL,
+        PRIMARY_COMPONENTS_SQL,
         wkt=geometries_combined.wkt,
         epsg=geometries.crs.to_epsg(),
     )
@@ -145,72 +144,14 @@ def fetch_primary_soil_components(
         crs="EPSG:4326",
     )
 
-    # Then fetch the parent material for each primary component:
-    component_keys = primary_components.component_key.tolist()
-    parent_material = _send_query(
-        PARENT_MATERIAL_SQL,
-        bindparam("component_keys", component_keys, expanding=True),
-    )
-    primary_components = primary_components.merge(
-        parent_material,
-        how="left",
-        on="component_key",
-        validate="one_to_one",
+    # Fetch horizons for each primary component, and aggregate them over the
+    # requested depth range:
+    component_keys = primary_components["component_key"].tolist()
+    horizons_aggregated = _fetch_and_aggregate_horizons_by_component(
+        component_keys, top_depth_cm, bottom_depth_cm
     )
 
-    # Fetch horizons for each primary component in the requested depth range:
-    horizons = _send_query(
-        HORIZONS_SQL,
-        bindparam("component_keys", component_keys, expanding=True),
-        top_depth_cm=top_depth_cm,
-        bottom_depth_cm=bottom_depth_cm,
-    )
-
-    # Fetch fragments and aggregate them per-horizon:
-    horizon_keys = horizons.horizon_key.tolist()
-    fragments = _send_query(
-        FRAGMENTS_SQL,
-        bindparam("horizon_keys", horizon_keys, expanding=True),
-    )
-    fragments_aggregated = (
-        fragments.groupby("horizon_key")[["fragment_percent_by_volume"]]
-        .sum()
-        .join(
-            fragments[fragments["fragment_kind"].notna()]
-            .groupby("horizon_key")["fragment_kind"]
-            .unique()
-        )
-        .reset_index()
-    )
-    horizons = horizons.merge(
-        fragments_aggregated,
-        how="left",
-        on="horizon_key",
-        validate="one_to_one",
-    ).drop(columns=["horizon_key"])
-
-    # Aggregate each soil property across all the horizons using a
-    # depth-weighted average:
-    columns_to_aggregate = horizons.columns.difference(
-        ["component_key", "fragment_kind"], sort=False
-    )
-    horizons_aggregated = (
-        horizons.groupby("component_key")[columns_to_aggregate].apply(
-            _depth_weighted_average,  # type: ignore
-            top_depth_cm,
-            bottom_depth_cm,
-        )
-        # Concatenate the different kinds of fragments at each horizon into a
-        # single string:
-        .join(
-            horizons[horizons["fragment_kind"].notna()]
-            .groupby("component_key")["fragment_kind"]
-            .agg(_concat_unique_values)
-        )
-    )
-
-    # Finally, merge the aggregated horizons into the primary components
-    # DataFrame:
+    # Merge the aggregated horizons into the primary components DataFrame:
     primary_components = primary_components.merge(
         horizons_aggregated,
         how="left",
@@ -264,6 +205,61 @@ def _compile_sql(sql: str, *binds, **params) -> str:
             dialect=SQL_DIALECT,
         )
     )
+
+
+def _fetch_and_aggregate_horizons_by_component(
+    component_keys, top_depth_cm, bottom_depth_cm
+) -> pandas.DataFrame:
+    horizons = _send_query(
+        HORIZONS_SQL,
+        bindparam("component_keys", component_keys, expanding=True),
+        top_depth_cm=top_depth_cm,
+        bottom_depth_cm=bottom_depth_cm,
+    )
+
+    # Fetch fragments and aggregate them per-horizon:
+    horizon_keys = horizons["horizon_key"].tolist()
+    fragments = _send_query(
+        FRAGMENTS_SQL,
+        bindparam("horizon_keys", horizon_keys, expanding=True),
+    )
+    fragments_aggregated = (
+        fragments.groupby("horizon_key")[["fragment_percent_by_volume"]]
+        .sum()
+        .join(
+            fragments[fragments["fragment_kind"].notna()]
+            .groupby("horizon_key")["fragment_kind"]
+            .unique()
+        )
+        .reset_index()
+    )
+    horizons = horizons.merge(
+        fragments_aggregated,
+        how="left",
+        on="horizon_key",
+        validate="one_to_one",
+    ).drop(columns=["horizon_key"])
+
+    # Aggregate each soil property across all the horizons using a
+    # depth-weighted average:
+    columns_to_aggregate = horizons.columns.difference(
+        ["component_key", "fragment_kind"], sort=False
+    )
+    horizons_aggregated = horizons.groupby("component_key")[columns_to_aggregate].apply(
+        _depth_weighted_average,  # type: ignore
+        top_depth_cm,
+        bottom_depth_cm,
+    )
+
+    # Concatenate the different kinds of fragments at each horizon into a
+    # single string:
+    fragment_kinds_aggregated = (
+        horizons[horizons["fragment_kind"].notna()]
+        .groupby("component_key")["fragment_kind"]
+        .agg(_concat_unique_values)
+    )
+
+    return horizons_aggregated.join(fragment_kinds_aggregated)
 
 
 def _depth_weighted_average(horizons, top_depth_cm, bottom_depth_cm):

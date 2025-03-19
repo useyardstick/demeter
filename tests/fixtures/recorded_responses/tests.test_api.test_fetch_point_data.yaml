@@ -10,8 +10,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: b525a79c-1684-4bed-b0c0-080f47f5090f
-      x-envoy-upstream-service-time: '86'
+      request-id: 47aa630c-dc09-4882-a383-ecab649e07b5
+      x-envoy-upstream-service-time: '79'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2713SGA%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+19%29&%24top=100
@@ -44,8 +44,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: 8b301916-54a4-4f9a-b840-0811d9744f05
-      x-envoy-upstream-service-time: '700'
+      request-id: 2fe3b8d0-6d7a-4cde-ba84-faa57bcc39d0
+      x-envoy-upstream-service-time: '159'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2713SGA%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+55%29&%24top=100
@@ -60,8 +60,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: c09aa5ac-8bae-4a70-82d8-a76b43b2156e
-      x-envoy-upstream-service-time: '87'
+      request-id: ddc493e1-860d-49af-b89e-b7f954441c57
+      x-envoy-upstream-service-time: '99'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2713SGA%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+62%29&%24top=100
@@ -76,8 +76,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: 5bdfda3b-a449-43a4-b61a-ba0a5546f83a
-      x-envoy-upstream-service-time: '289'
+      request-id: f17703bd-f313-4d14-998c-72f0a0609c90
+      x-envoy-upstream-service-time: '87'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2714SKF%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+19%29&%24top=100
@@ -110,8 +110,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: 2b5ff500-f147-4d08-84a6-d5be961bd35a
-      x-envoy-upstream-service-time: '97'
+      request-id: 67c8216b-944b-4644-b0e7-0d3cf569831a
+      x-envoy-upstream-service-time: '105'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2714SKF%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+55%29&%24top=100
@@ -126,8 +126,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: b9b7e960-7d64-4161-975d-cc600791f1fd
-      x-envoy-upstream-service-time: '84'
+      request-id: 5c18b172-50df-4b39-8bf5-0cb890c4d690
+      x-envoy-upstream-service-time: '151'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2714SKF%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+62%29&%24top=100
@@ -143,8 +143,8 @@ responses:
       Strict-Transport-Security: max-age=31536000; includeSubDomains
       Transfer-Encoding: chunked
       Vary: Accept-Encoding
-      Via: 1.1 63640f84d1cdd3131051fed0ef6757e8.cloudfront.net (CloudFront)
-      X-Amz-Cf-Id: dPJm2q8Q0pj0vdftnLpU0IfgMwSmd4e_WfTDxqggDE3vKyWOTsfYUw==
+      Via: 1.1 b5b679e65e3e2244b3e91bb2d4d12a34.cloudfront.net (CloudFront)
+      X-Amz-Cf-Id: Z30_y3gHCPT6OvwyYtR6F4FqbXq6adsIgsGxbv_olbTcX7HXhZT6Pw==
       X-Amz-Cf-Pop: ORD56-P7
       X-Cache: Miss from cloudfront
       X-Content-Type-Options: nosniff
@@ -155,7 +155,7 @@ responses:
     url: https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/2/query?geometry=%7B%22rings%22%3A+%5B%5B%5B-101.99470334503825%2C+36.2447263699898%5D%2C+%5B-101.99470334503825%2C+36.2512340537711%5D%2C+%5B-102.09265676705904%2C+36.2512340537711%5D%2C+%5B-102.09265676705904%2C+36.2447263699898%5D%2C+%5B-101.99470334503825%2C+36.2447263699898%5D%5D%5D%7D&geometryType=esriGeometryPolygon&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=HUC4%2CName&returnGeometry=true&f=GeoJSON
 - response:
     auto_calculate_content_length: false
-    body: '{"Table":[["geometry","map_unit_key","component_key","component_percent","component_name","component_kind","drainage_class","taxonomic_class","taxonomic_order"],["POLYGON
+    body: '{"Table":[["geometry","map_unit_key","map_unit_symbol","map_unit_name","component_key","component_percent","component_name","component_kind","drainage_class","taxonomic_class","taxonomic_order","parent_material"],["POLYGON
       ((-101.996779403886 36.2416409517582, -101.996080776254 36.2421376743436, -101.995493403888
       36.2425053461906, -101.995223630453 36.2428910590481, -101.995066204126 36.243019739816,
       -101.994953193246 36.2432401249106, -101.994908518855 36.2432584718022, -101.994795966916
@@ -224,8 +224,9 @@ responses:
       36.2433658698802, -101.996761073831 36.2430526934847, -101.997393779939 36.2427033140187,
       -101.997393117743 36.2426666677311, -101.997528054842 36.2425382189994, -101.997618368776
       36.242244717613, -101.997368341547 36.2420434653386, -101.997142490549 36.2419340387639,
-      -101.996779403886 36.2416409517582))","372099","25640791","80","Dalhart","Series","Well
-      drained","Fine-loamy, mixed, superactive, mesic Aridic Haplustalfs","Alfisols"],["POLYGON
+      -101.996779403886 36.2416409517582))","372099","DaB","Dalhart fine sandy loam,
+      1 to 3 percent slopes","25640791","80","Dalhart","Series","Well drained","Fine-loamy,
+      mixed, superactive, mesic Aridic Haplustalfs","Alfisols","loamy eolian deposits"],["POLYGON
       ((-102.09807479674 36.2105982050815, -102.097487619857 36.2106532677415, -102.096900013208
       36.2108005037567, -102.09656094406 36.2110030340459, -102.096268151238 36.2113329303723,
       -102.096132187123 36.2116270768185, -102.096132342251 36.2122139927568, -102.096042446747
@@ -970,8 +971,9 @@ responses:
       36.2485184951872, -102.085232472968 36.2484271333395, -102.085187267087 36.2482433459401,
       -102.085188198235 36.2481153602683, -102.085322860838 36.2477479421202, -102.086045911354
       36.2468486135346, -102.086249216328 36.2464812725442, -102.086362229124 36.2463896214093,
-      -102.086497700437 36.2463531894815))","372110","25640753","90","Sherm","Series","Well
-      drained","Fine, mixed, superactive, mesic Torrertic Paleustolls","Mollisols"],["POLYGON
+      -102.086497700437 36.2463531894815))","372110","ShA","Sherm clay loam, 0 to
+      1 percent slopes","25640753","90","Sherm","Series","Well drained","Fine, mixed,
+      superactive, mesic Torrertic Paleustolls","Mollisols","silty and clayey loess"],["POLYGON
       ((-102.06561165344 36.2417924866085, -102.065386130141 36.2418844669024, -102.06525088407
       36.2420496951295, -102.065024891593 36.242233848914, -102.064504926449 36.2423443671551,
       -102.064368599808 36.2424541799535, -102.06434665291 36.2426011251725, -102.064482732136
@@ -1003,24 +1005,9 @@ responses:
       -102.066561956367 36.2428920452781, -102.066471364281 36.2428009205107, -102.066764486624
       36.2421221808167, -102.066697582212 36.2419198083847, -102.066561639248 36.2418104114314,
       -102.066425854453 36.2418289434273, -102.066086222399 36.2419571432128, -102.065950975691
-      36.2418843914851, -102.06561165344 36.2417924866085))","372111","25640805","80","Spurlock","Series","Well
-      drained","Coarse-loamy, carbonatic, mesic Aridic Calciustepts","Inceptisols"]]}'
-    content_type: text/plain
-    headers:
-      Access-Control-Allow-Headers: Content-Type
-      Access-Control-Allow-Methods: GET,POST,OPTIONS
-      Access-Control-Allow-Origin: '*'
-      Cache-Control: private
-      Strict-Transport-Security: max-age=31536000; includeSubDomains
-      X-AspNet-Version: 4.0.30319
-      X-Powered-By: ASP.NET
-    method: POST
-    status: 200
-    url: https://sdmdataaccess.sc.egov.usda.gov/tabular/post.rest
-- response:
-    auto_calculate_content_length: false
-    body: '{"Table":[["component_key","parent_material"],["25640753","silty and clayey
-      loess"],["25640791","loamy eolian deposits"],["25640805","late Pleistocene \u0026
+      36.2418843914851, -102.06561165344 36.2417924866085))","372111","SpB","Spurlock
+      loam, 1 to 3 percent slopes","25640805","80","Spurlock","Series","Well drained","Coarse-loamy,
+      carbonatic, mesic Aridic Calciustepts","Inceptisols","late Pleistocene \u0026
       Holocene age calcareous loamy eolian deposits"]]}'
     content_type: text/plain
     headers:
