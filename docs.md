@@ -56,6 +56,8 @@
   * [align](#demeter.raster.utils.reprojection.align)
   * [reproject\_and\_merge](#demeter.raster.utils.reprojection.reproject_and_merge)
   * [align\_and\_merge](#demeter.raster.utils.reprojection.align_and_merge)
+* [demeter.vector.usda.ssurgo](#demeter.vector.usda.ssurgo)
+  * [fetch\_primary\_soil\_components](#demeter.vector.usda.ssurgo.fetch_primary_soil_components)
 
 <a id="demeter.api"></a>
 
@@ -73,6 +75,7 @@ def fetch_point_data(points: Union[str, geopandas.GeoSeries,
                          "sentinel2_ndvi",
                          "usgs_hydrography",
                          "usgs_topography",
+                         "ssurgo_primary_component",
                      ]],
                      *,
                      start_depth: int = 0,
@@ -83,7 +86,7 @@ def fetch_point_data(points: Union[str, geopandas.GeoSeries,
 
 Fetch data from one or more sources for the given points.
 
-`end_depth` (in cm) is required for POLARIS.
+`end_depth` (in cm) is required for POLARIS and SSURGO.
 
 `year` and `month` are required for Sentinel-2 NDVI.
 
@@ -958,4 +961,34 @@ def align_and_merge(rasters: Iterable[Union[str, Raster]],
 Align multiple rasters to the given raster's grid, then merge them.
 
 Keyword arguments are passed to `merge`.
+
+<a id="demeter.vector.usda.ssurgo"></a>
+
+# demeter.vector.usda.ssurgo
+
+<a id="demeter.vector.usda.ssurgo.fetch_primary_soil_components"></a>
+
+#### fetch\_primary\_soil\_components
+
+```python
+def fetch_primary_soil_components(geometries: Union[str,
+                                                    geopandas.GeoDataFrame,
+                                                    geopandas.GeoSeries],
+                                  *,
+                                  top_depth_cm: int = 0,
+                                  bottom_depth_cm: int,
+                                  crop: bool = True) -> geopandas.GeoDataFrame
+```
+
+Fetch all SSURGO map units that intersect with the given geometries. Return
+a GeoDataFrame with the primary component of each map unit, along with a
+depth-weighted average of that component's soil properties over the given
+depth range.
+
+**Example**:
+
+  
+```python
+fetch_primary_soil_components("path/to/geometries.geojson", bottom_depth_cm=100)
+```
 

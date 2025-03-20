@@ -7,6 +7,7 @@ from pyproj.aoi import AreaOfInterest
 from pyproj.database import query_utm_crs_info
 
 from demeter.raster import polaris, sentinel2, usgs
+from demeter.vector.usda import ssurgo
 
 
 def fetch_point_data(
@@ -17,6 +18,7 @@ def fetch_point_data(
             "sentinel2_ndvi",
             "usgs_hydrography",
             "usgs_topography",
+            "ssurgo_primary_component",
         ]
     ],
     *,
@@ -28,7 +30,7 @@ def fetch_point_data(
     """
     Fetch data from one or more sources for the given points.
 
-    `end_depth` (in cm) is required for POLARIS.
+    `end_depth` (in cm) is required for POLARIS and SSURGO.
 
     `year` and `month` are required for Sentinel-2 NDVI.
 
@@ -84,6 +86,14 @@ def fetch_point_data(
 
     if "usgs_topography" in values_to_fetch:
         dataframes_to_merge.append(_topo_data_from_usgs(points))
+
+    if "ssurgo_primary_component" in values_to_fetch:
+        if end_depth is None:
+            raise ValueError("end_depth must be provided for SSURGO")
+
+        dataframes_to_merge.append(
+            _primary_component_from_ssurgo(points, start_depth, end_depth)
+        )
 
     return geopandas.GeoDataFrame(
         pandas.concat(dataframes_to_merge, axis="columns", copy=False),
@@ -205,5 +215,22 @@ def _topo_data_from_usgs(points: geopandas.GeoSeries) -> pandas.DataFrame:
                 elevation.value_at(point.x, point.y)
                 for point in points_in_usgs_topo_crs
             ]
+        }
+    )
+
+
+def _primary_component_from_ssurgo(
+    points: geopandas.GeoSeries, start_depth: int, end_depth: int
+) -> pandas.DataFrame:
+    primary_soil_components = ssurgo.fetch_primary_soil_components(
+        points,
+        top_depth_cm=start_depth,
+        bottom_depth_cm=end_depth,
+    ).explode()
+    assert (primary_soil_components.geometry == points.geometry).all()
+
+    return primary_soil_components.drop(columns=["geometry"]).rename(
+        columns={
+            column: f"ssurgo_{column}" for column in primary_soil_components.columns
         }
     )

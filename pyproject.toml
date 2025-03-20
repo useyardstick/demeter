@@ -21,6 +21,7 @@ dependencies = [
   "requests",
   "shapely ~= 2.0",
   "smart-open",
+  "sqlalchemy",
 ]
 
 [build-system]
@@ -74,6 +75,7 @@ module = [
   "rasterio.*",
   "shapely.*",
   "smart_open.*",
+  "sqlalchemy.*",
 ]
 follow_untyped_imports = true
 
@@ -91,6 +93,7 @@ modules = [
   "demeter.raster.utils.mask",
   "demeter.raster.utils.merge",
   "demeter.raster.utils.reprojection",
+  "demeter.vector.usda.ssurgo",
 ]
 
 [tool.pydoc-markdown.renderer]
