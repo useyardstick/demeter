@@ -1,3 +1,8 @@
+"""
+Tools for fetching Soil Survey (SSURGO) data from USDA:
+https://www.nrcs.usda.gov/resources/data-and-reports/soil-survey-geographic-database-ssurgo
+"""
+
 from typing import Union
 
 import geopandas

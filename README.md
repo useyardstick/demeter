@@ -37,6 +37,10 @@ This library also provides helper functions for common raster operations:
 - [Merging](docs.md#demeter.raster.utils.merge)
 - [Reprojecting](docs.md#demeter.raster.utils.reprojection)
 
+### Fetching vector datasets
+
+- [USDA Soil Survey (SSURGO)](docs.md#demeter.vector.usda.ssurgo)
+
 Development
 -----------
 

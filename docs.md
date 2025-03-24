@@ -966,6 +966,9 @@ Keyword arguments are passed to `merge`.
 
 # demeter.vector.usda.ssurgo
 
+Tools for fetching Soil Survey (SSURGO) data from USDA:
+https://www.nrcs.usda.gov/resources/data-and-reports/soil-survey-geographic-database-ssurgo
+
 <a id="demeter.vector.usda.ssurgo.fetch_primary_soil_components"></a>
 
 #### fetch\_primary\_soil\_components
