@@ -1,12 +1,14 @@
 import geopandas
 import numpy
+import pytest
 from rasterio import Affine
 
 from demeter.raster import Raster
 from demeter.raster.utils.mask import mask
 
 
-def test_mask_raster():
+@pytest.mark.parametrize("filename", (None, "raster.tif"))
+def test_mask_raster(tmp_path, filename):
     matrix = numpy.ma.ones((4, 4))
     shapes = geopandas.GeoDataFrame.from_features(
         [
@@ -44,10 +46,14 @@ def test_mask_raster():
             },
         ]
     )
-    result, *_ = mask(
-        Raster(matrix, transform=Affine.identity(), crs="EPSG:4326"),
-        shapes=shapes,
-    )
+    input_raster = Raster(matrix, transform=Affine.identity(), crs="EPSG:4326")
+    if filename is None:
+        result = mask(input_raster, shapes=shapes)
+    else:
+        raster_path = tmp_path / filename
+        mask(input_raster, shapes=shapes, dst_path=raster_path)
+        result = Raster.from_file(raster_path)
+
     expected = numpy.ma.array(
         matrix,
         mask=~numpy.ma.make_mask(
@@ -59,4 +65,4 @@ def test_mask_raster():
             ]
         ),
     )
-    assert numpy.ma.allequal(result, expected)
+    assert numpy.ma.allequal(result.pixels, expected)

@@ -1,3 +1,4 @@
+import itertools
 import warnings
 
 import numpy
@@ -59,9 +60,9 @@ def int_rasters_with_nonzero_nodata(tmp_path):
     )
 
 
-@pytest.fixture
-def float_rasters(tmp_path):
-    return _save_rasters(
+@pytest.fixture(params=(True, False))
+def float_rasters(request, tmp_path):
+    raster_paths = _save_rasters(
         tmp_path,
         [
             numpy.array(
@@ -79,6 +80,10 @@ def float_rasters(tmp_path):
         ],
         nodata=numpy.nan,
     )
+    return_raster_instances = request.param
+    if return_raster_instances:
+        return [Raster.from_file(path) for path in raster_paths]
+    return raster_paths
 
 
 @pytest.fixture
@@ -119,7 +124,7 @@ def test_merge_int_rasters_with_nonzero_nodata(int_rasters_with_nonzero_nodata):
     """
     merged = merge(int_rasters_with_nonzero_nodata)
     assert_array_equal(merged.pixels[0], numpy.ma.masked_array([[6, 3], [9, 4]]))
-    assert merged.pixels.fill_value == -9999
+    assert merged.nodata == -9999
 
 
 def test_merge_int_rasters_with_nonzero_nodata_as_float(
@@ -131,7 +136,7 @@ def test_merge_int_rasters_with_nonzero_nodata_as_float(
     """
     merged = merge(int_rasters_with_nonzero_nodata, dtype=float)
     assert_array_equal(merged.pixels[0], numpy.ma.masked_array([[6, 3], [9, 4]]))
-    assert merged.pixels.fill_value == -9999
+    assert merged.nodata == -9999
 
 
 def test_merge_int_rasters_with_nonzero_nodata_passing_zero_nodata(
@@ -142,7 +147,7 @@ def test_merge_int_rasters_with_nonzero_nodata_passing_zero_nodata(
     """
     merged = merge(int_rasters_with_nonzero_nodata, nodata=0)
     assert_array_equal(merged.pixels[0], numpy.ma.masked_array([[6, 3], [9, 4]]))
-    assert merged.pixels.fill_value == 0
+    assert merged.nodata == 0
 
 
 def test_merge_int_rasters_with_zero_nodata(int_rasters_with_zero_nodata):
@@ -151,7 +156,7 @@ def test_merge_int_rasters_with_zero_nodata(int_rasters_with_zero_nodata):
     """
     merged = merge(int_rasters_with_zero_nodata)
     assert_array_equal(merged.pixels[0], numpy.ma.masked_array([[6, 3], [9, 4]]))
-    assert merged.pixels.fill_value == 0
+    assert merged.nodata == 0
 
 
 def test_merge_int_rasters_with_zero_nodata_passing_nonzero_nodata(
@@ -163,7 +168,7 @@ def test_merge_int_rasters_with_zero_nodata_passing_nonzero_nodata(
     """
     merged = merge(int_rasters_with_zero_nodata, nodata=-9999)
     assert_array_equal(merged.pixels[0], numpy.ma.masked_array([[6, 3], [9, 4]]))
-    assert merged.pixels.fill_value == -9999
+    assert merged.nodata == -9999
 
 
 def test_merge_min(float_rasters):
@@ -192,10 +197,17 @@ def test_merge_max(float_rasters):
     )
 
 
-def test_merge_mean(float_rasters):
-    mean_raster, _, _ = merge(float_rasters, method="mean")
+@pytest.mark.parametrize("filename", (None, "mean.tif"))
+def test_merge_mean(float_rasters, tmp_path, filename):
+    if filename is None:
+        mean_raster = merge(float_rasters, method="mean")
+    else:
+        raster_path = str(tmp_path / filename)
+        merge(float_rasters, method="mean", dst_path=raster_path)
+        mean_raster = Raster.from_file(raster_path)
+
     assert_array_equal(
-        mean_raster[0],
+        mean_raster.pixels[0],
         numpy.array(
             [
                 [5.0, 3.0],
@@ -205,11 +217,27 @@ def test_merge_mean(float_rasters):
     )
 
 
-def test_merge_variance(float_rasters):
-    mean = merge(float_rasters, method="mean")
-    variance_raster, _, _ = merge_variance(float_rasters, mean)
+@pytest.mark.parametrize(
+    "filename,mean_filename",
+    itertools.product((None, "variance.tif"), (None, "mean.tif")),
+)
+def test_merge_variance(float_rasters, tmp_path, filename, mean_filename):
+    if mean_filename is None:
+        mean = merge(float_rasters, method="mean")
+    else:
+        mean = merge(
+            float_rasters, method="mean", dst_path=str(tmp_path / mean_filename)
+        )
+
+    if filename is None:
+        variance_raster = merge_variance(float_rasters, mean)
+    else:
+        raster_path = str(tmp_path / filename)
+        merge_variance(float_rasters, mean, dst_path=raster_path)
+        variance_raster = Raster.from_file(raster_path)
+
     assert_array_equal(
-        variance_raster[0],
+        variance_raster.pixels[0],
         numpy.array(
             [
                 [1.0, 0.0],
@@ -219,11 +247,27 @@ def test_merge_variance(float_rasters):
     )
 
 
-def test_merge_stddev(float_rasters):
-    mean = merge(float_rasters, method="mean")
-    stddev_raster, _, _ = merge_stddev(float_rasters, mean)
+@pytest.mark.parametrize(
+    "filename,mean_filename",
+    itertools.product((None, "stddev.tif"), (None, "mean.tif")),
+)
+def test_merge_stddev(float_rasters, tmp_path, filename, mean_filename):
+    if mean_filename is None:
+        mean = merge(float_rasters, method="mean")
+    else:
+        mean = merge(
+            float_rasters, method="mean", dst_path=str(tmp_path / mean_filename)
+        )
+
+    if filename is None:
+        stddev_raster = merge_stddev(float_rasters, mean)
+    else:
+        raster_path = str(tmp_path / filename)
+        merge_stddev(float_rasters, mean, dst_path=raster_path)
+        stddev_raster = Raster.from_file(raster_path)
+
     assert_array_equal(
-        stddev_raster[0],
+        stddev_raster.pixels[0],
         numpy.array(
             [
                 [1.0, 0.0],

@@ -10,7 +10,7 @@ raster, transform, crs = fetch_and_merge_rasters("path/to/boundaries.geojson")
 """
 
 import itertools
-from typing import Iterable, Union
+from typing import Iterable, Optional, Union, overload
 
 import geopandas
 
@@ -26,10 +26,30 @@ S3_PREFIX = "StagedProducts/Elevation/13/TIFF/current/"
 RASTER_CRS = "EPSG:4269"
 
 
+@overload
 def fetch_and_merge_rasters(
     geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    *,
     crop: bool = True,
-) -> Raster:
+    dst_path: str,
+) -> str: ...
+
+
+@overload
+def fetch_and_merge_rasters(
+    geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    *,
+    crop: bool = True,
+    dst_path: None = None,
+) -> Raster: ...
+
+
+def fetch_and_merge_rasters(
+    geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    *,
+    crop: bool = True,
+    dst_path: Optional[str] = None,
+) -> Union[str, Raster]:
     """
     Fetch 1/3 arc-second resolution elevation data for the given geometries
     from USGS. If the geometries span multiple 1 degree x 1 degree tiles, fetch
@@ -37,6 +57,9 @@ def fetch_and_merge_rasters(
 
     If `crop` is True (the default), crop the output raster to the given
     geometries.
+
+    If `dst_path` is provided, save the output raster to the given path. Use
+    this for large geometries that don't fit in memory.
     """
     if isinstance(geometries, str):
         geometries = geopandas.read_file(geometries)
@@ -46,7 +69,9 @@ def fetch_and_merge_rasters(
     rasters = list(fetch_rasters(geometries))
 
     return merge_and_crop_rasters(
-        rasters, crop_to=geometries.to_crs(RASTER_CRS) if crop else None
+        rasters,
+        crop_to=geometries.to_crs(RASTER_CRS) if crop else None,
+        dst_path=dst_path,
     )
 
 

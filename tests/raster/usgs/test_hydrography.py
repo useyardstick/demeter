@@ -3,6 +3,7 @@ import numpy
 import pytest
 import rasterio.transform
 
+from demeter.raster import Raster
 from demeter.raster.usgs.hydrography import (
     RASTER_CRS,
     fetch_and_merge_rasters,
@@ -20,13 +21,23 @@ def test_find_hu4_codes(geometries, record_or_replay_requests):
 
 
 # TODO: save test fixtures
-def test_fetch_and_merge_cat(geometries):
-    catchments = fetch_and_merge_rasters("cat.tif", geometries)
-    assert catchments.raster.shape == (1633, 8702)
-    assert catchments.raster.pixels.count() == 41205
-    assert catchments.raster.crs in {"EPSG:5070", "ESRI:102039"}
+@pytest.mark.parametrize("filename", (None, "cat.tif"))
+def test_fetch_and_merge_cat(geometries, tmp_path, filename):
+    if filename is None:
+        catchments = fetch_and_merge_rasters("cat.tif", geometries)
+        raster = catchments.raster
+    else:
+        raster_path = str(tmp_path / filename)
+        catchments = fetch_and_merge_rasters(
+            "cat.tif", geometries, dst_path=raster_path
+        )
+        raster = Raster.from_file(catchments.raster_path)
+
+    assert raster.shape == (1633, 8702)
+    assert raster.pixels.count() == 41205
+    assert raster.crs in {"EPSG:5070", "ESRI:102039"}
     assert numpy.array_equal(
-        numpy.unique(catchments.raster.pixels).compressed(),
+        numpy.unique(raster.pixels).compressed(),
         [
             23000300005215,
             23000300015091,
@@ -46,20 +57,26 @@ def test_fetch_and_merge_cat(geometries):
     )
 
     # Check that raster bounds are within 10m of input geometry bounds:
-    height, width = catchments.raster.shape
-    raster_bounds = rasterio.transform.array_bounds(
-        height, width, catchments.raster.transform
-    )
+    height, width = raster.shape
+    raster_bounds = rasterio.transform.array_bounds(height, width, raster.transform)
     input_geometry_bounds = geometries.to_crs(RASTER_CRS).total_bounds
     assert all(abs(input_geometry_bounds - raster_bounds) < 10)
 
 
-def test_fetch_and_merge_fdr(geometries):
-    fdr = fetch_and_merge_rasters("fdr.tif", geometries)
-    assert fdr.raster.shape == (1633, 8702)
-    assert fdr.raster.pixels.count() == 41205
-    assert fdr.raster.crs in {"EPSG:5070", "ESRI:102039"}
+@pytest.mark.parametrize("filename", (None, "fdr.tif"))
+def test_fetch_and_merge_fdr(geometries, tmp_path, filename):
+    if filename is None:
+        fdr = fetch_and_merge_rasters("fdr.tif", geometries)
+        raster = fdr.raster
+    else:
+        raster_path = str(tmp_path / filename)
+        fdr = fetch_and_merge_rasters("fdr.tif", geometries, dst_path=raster_path)
+        raster = Raster.from_file(fdr.raster_path)
+
+    assert raster.shape == (1633, 8702)
+    assert raster.pixels.count() == 41205
+    assert raster.crs in {"EPSG:5070", "ESRI:102039"}
     assert numpy.array_equal(
-        numpy.unique(fdr.raster.pixels).compressed(),
+        numpy.unique(raster.pixels).compressed(),
         [1, 2, 4, 8, 16, 32, 64, 128],
     )

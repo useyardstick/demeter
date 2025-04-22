@@ -13,6 +13,7 @@
     * [bounds](#demeter.raster.Raster.bounds)
     * [resolution](#demeter.raster.Raster.resolution)
     * [dtype](#demeter.raster.Raster.dtype)
+    * [nodata](#demeter.raster.Raster.nodata)
     * [value\_at](#demeter.raster.Raster.value_at)
     * [values\_at](#demeter.raster.Raster.values_at)
     * [save](#demeter.raster.Raster.save)
@@ -31,6 +32,7 @@
   * [fetch\_rasters](#demeter.raster.usgs.topography.fetch_rasters)
 * [demeter.raster.usgs.hydrography](#demeter.raster.usgs.hydrography)
   * [USGSHydrographyRaster](#demeter.raster.usgs.hydrography.USGSHydrographyRaster)
+  * [USGSHydrographyRasterOnDisk](#demeter.raster.usgs.hydrography.USGSHydrographyRasterOnDisk)
   * [fetch\_and\_merge\_rasters](#demeter.raster.usgs.hydrography.fetch_and_merge_rasters)
   * [fetch\_rasters](#demeter.raster.usgs.hydrography.fetch_rasters)
   * [find\_hu4\_codes](#demeter.raster.usgs.hydrography.find_hu4_codes)
@@ -206,6 +208,17 @@ def dtype()
 ```
 
 The raster's data type.
+
+<a id="demeter.raster.Raster.nodata"></a>
+
+#### nodata
+
+```python
+@property
+def nodata()
+```
+
+The raster's nodata value.
 
 <a id="demeter.raster.Raster.value_at"></a>
 
@@ -435,9 +448,11 @@ raster, transform, crs = fetch_and_merge_rasters("path/to/boundaries.geojson")
 #### fetch\_and\_merge\_rasters
 
 ```python
-def fetch_and_merge_rasters(geometries: Union[str, geopandas.GeoDataFrame,
-                                              geopandas.GeoSeries],
-                            crop: bool = True) -> Raster
+def fetch_and_merge_rasters(
+        geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+        *,
+        crop: bool = True,
+        dst_path: Optional[str] = None) -> Union[str, Raster]
 ```
 
 Fetch 1/3 arc-second resolution elevation data for the given geometries
@@ -446,6 +461,9 @@ all the necessary tiles and stitch them together.
 
 If `crop` is True (the default), crop the output raster to the given
 geometries.
+
+If `dst_path` is provided, save the output raster to the given path. Use
+this for large geometries that don't fit in memory.
 
 <a id="demeter.raster.usgs.topography.fetch_rasters"></a>
 
@@ -489,21 +507,35 @@ catchment_areas_in_m2 = {
 
 ```python
 @dataclass
-class USGSHydrographyRaster()
+class USGSHydrographyRaster(USGSHydrographyRasterBase)
 ```
 
 A `Raster` instance containing the USGS hydrography raster, and a dict
 mapping of pixel counts from the sidecar DBF file.
+
+<a id="demeter.raster.usgs.hydrography.USGSHydrographyRasterOnDisk"></a>
+
+## USGSHydrographyRasterOnDisk Objects
+
+```python
+@dataclass
+class USGSHydrographyRasterOnDisk(USGSHydrographyRasterBase)
+```
+
+Same as `USGSHydrographyRaster`, but the raster is stored on disk.
 
 <a id="demeter.raster.usgs.hydrography.fetch_and_merge_rasters"></a>
 
 #### fetch\_and\_merge\_rasters
 
 ```python
-def fetch_and_merge_rasters(raster_filename: Union[str, list[str]],
-                            geometries: Union[str, geopandas.GeoDataFrame,
-                                              geopandas.GeoSeries],
-                            crop: bool = True)
+def fetch_and_merge_rasters(
+    raster_filename: Union[str, list[str]],
+    geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    *,
+    crop: bool = True,
+    dst_path: Optional[str] = None
+) -> Union[USGSHydrographyRasterBase, Iterable[USGSHydrographyRasterBase]]
 ```
 
 Fetch the given raster (e.g. "cat.tif") from USGS for the given geometries.
@@ -519,6 +551,9 @@ cat, fdr = fetch_and_merge_rasters(["cat.tif", "fdr.tif"], "path/to/boundaries.g
 
 If `crop` is True (the default), crop the output raster to the given
 geometries.
+
+If `dst_path` is provided, save the output raster to the given path. Use
+this for large geometries that don't fit in memory.
 
 <a id="demeter.raster.usgs.hydrography.fetch_rasters"></a>
 
@@ -604,13 +639,16 @@ rasters = fetch_and_build_ndvi_rasters(
 #### fetch\_and\_build\_ndvi\_rasters
 
 ```python
-def fetch_and_build_ndvi_rasters(geometries: Union[str, geopandas.GeoDataFrame,
-                                                   geopandas.GeoSeries],
-                                 year: int,
-                                 month: int,
-                                 statistics: Optional[Collection[Literal[
-                                     "mean", "min", "max", "stddev"]]] = None,
-                                 crop: bool = True) -> Iterable[NDVIRasters]
+def fetch_and_build_ndvi_rasters(
+    geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    year: int,
+    month: int,
+    statistics: Optional[Collection[Literal["mean", "min", "max",
+                                            "stddev"]]] = None,
+    *,
+    crop: bool = True,
+    dst_path: Optional[str] = None
+) -> Iterable[Union[NDVIRasters, NDVIRastersOnDisk]]
 ```
 
 Download red and NIR reflectance rasters from Sentinel-2 for the given
@@ -620,6 +658,9 @@ NDVI rasters together per the requested statistic.
 If `crop` is True (the default), crop the output raster to the given
 geometries. If `crop` if False, the output raster will cover the extent of
 the Sentinel-2 rasters intersecting with the given geometries.
+
+If `dst_path` is given, NDVI rasters will be saved to that directory. Use
+this for large geometries that don't fit in memory.
 
 <a id="demeter.raster.sentinel2.ndvi.fetch_and_build_ndvi_rasters_from_keys"></a>
 
@@ -631,8 +672,9 @@ def fetch_and_build_ndvi_rasters_from_keys(
     statistics: Optional[Collection[Literal["mean", "min", "max",
                                             "stddev"]]] = None,
     crop_to: Optional[Union[geopandas.GeoDataFrame,
-                            geopandas.GeoSeries]] = None
-) -> Iterable[NDVIRasters]
+                            geopandas.GeoSeries]] = None,
+    dst_path: Optional[str] = None
+) -> Iterable[Union[NDVIRasters, NDVIRastersOnDisk]]
 ```
 
 Download the given rasters, use them to calculate NDVI, and merge the NDVI
@@ -647,13 +689,14 @@ needed to calculate NDVI, and SCL is used to mask out clouds.
 
 ```python
 def build_ndvi_rasters_for_crs(
-    crs: str,
-    raster_paths: Iterable[str],
-    statistics: Optional[Collection[Literal["mean", "min", "max",
-                                            "stddev"]]] = None,
-    crop_to: Optional[Union[geopandas.GeoDataFrame,
-                            geopandas.GeoSeries]] = None
-) -> NDVIRasters
+        crs: str,
+        raster_paths: Iterable[str],
+        statistics: Optional[Collection[Literal["mean", "min", "max",
+                                                "stddev"]]] = None,
+        crop_to: Optional[Union[geopandas.GeoDataFrame,
+                                geopandas.GeoSeries]] = None,
+        dst_path: Optional[str] = None
+) -> Union[NDVIRasters, NDVIRastersOnDisk]
 ```
 
 Build NDVI rasters for each datatake, then merge them together according to
@@ -732,13 +775,20 @@ mask.
 #### mask
 
 ```python
-def mask(raster, shapes, **kwargs) -> Raster
+def mask(raster,
+         shapes,
+         *,
+         crop: bool = False,
+         dst_path: Optional[str] = None,
+         **kwargs) -> Union[str, Raster]
 ```
 
 Wraps `rasterio.mask.mask`, with the following differences:
 
 - Can accept a `Raster` instance as well as a rasterio dataset.
 - Returns a `Raster` instance instead of a (raster, transform) 2-tuple.
+- Alternatively, writes the masked raster to disk if `dst_path` is given.
+  Useful for large rasters that don't fit in memory.
 
 <a id="demeter.raster.utils.merge"></a>
 
@@ -749,13 +799,14 @@ Wraps `rasterio.mask.mask`, with the following differences:
 #### merge
 
 ```python
-def merge(rasters: Sequence,
+def merge(rasters,
           *,
           method: Union[Literal["first", "last", "min", "max", "sum", "count",
                                 "mean"], Callable] = "first",
           bounds: Optional[tuple[float, float, float, float]] = None,
           allow_resampling: bool = True,
-          **kwargs) -> Raster
+          dst_path: Optional[str] = None,
+          **kwargs) -> Union[str, Raster]
 ```
 
 Wraps `rasterio.merge.merge` to operate on Raster instances as well as
@@ -776,12 +827,19 @@ By default, this function will resample rasters if they don't align to a
 common pixel grid. To prevent this, set `allow_resampling=False`. This will
 raise an error if the input rasters don't align.
 
+If you pass `dst_path`, the merged raster will be written to disk and the
+path to the file will be returned. Use this for large rasters that don't
+fit in memory.
+
 <a id="demeter.raster.utils.merge.merge_variance"></a>
 
 #### merge\_variance
 
 ```python
-def merge_variance(rasters: Sequence, mean: Raster, **kwargs) -> Raster
+def merge_variance(rasters: Sequence,
+                   mean: Union[str, Raster],
+                   dst_path: Optional[str] = None,
+                   **kwargs) -> Union[str, Raster]
 ```
 
 Calculate the mean variance of rasters from the given mean.
@@ -791,7 +849,10 @@ Calculate the mean variance of rasters from the given mean.
 #### merge\_stddev
 
 ```python
-def merge_stddev(rasters: Sequence, mean: Raster, **kwargs) -> Raster
+def merge_stddev(rasters: Sequence,
+                 mean: Union[str, Raster],
+                 dst_path: Optional[str] = None,
+                 **kwargs) -> Union[str, Raster]
 ```
 
 Calculate the mean standard deviation of rasters from the given mean.

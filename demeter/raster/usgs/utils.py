@@ -1,4 +1,5 @@
 import os
+from typing import Union, overload
 
 import boto3
 from botocore import UNSIGNED
@@ -29,15 +30,27 @@ def download_from_s3(key: str) -> str:
     return local_path
 
 
-def merge_and_crop_rasters(sources, crop_to=None) -> Raster:
+@overload
+def merge_and_crop_rasters(sources, *, crop_to=None, dst_path: str) -> str: ...
+
+
+@overload
+def merge_and_crop_rasters(
+    sources, *, crop_to=None, dst_path: None = None
+) -> Raster: ...
+
+
+def merge_and_crop_rasters(sources, crop_to=None, dst_path=None) -> Union[str, Raster]:
     if crop_to is None:
-        return _merge_rasters(sources)
+        return _merge_rasters(sources, dst_path=dst_path)
 
-    merged = _merge_rasters(sources, bounds=tuple(crop_to.total_bounds))
-    return mask(merged, crop_to, all_touched=True)
+    merged = _merge_rasters(
+        sources, bounds=tuple(crop_to.total_bounds), dst_path=dst_path
+    )
+    return mask(merged, crop_to, all_touched=True, dst_path=dst_path)
 
 
-def _merge_rasters(sources, **kwargs) -> Raster:
+def _merge_rasters(sources, **kwargs) -> Union[str, Raster]:
     # FIXME: merging datasets that are very far apart uses a huge amount of
     # memory, even if the data is very sparse. I think this is because numpy
     # arrays allocate memory for every pixel. Find a way to mitigate.
