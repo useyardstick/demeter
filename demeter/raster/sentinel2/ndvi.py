@@ -62,6 +62,22 @@ def _ndvi_band(value: str) -> Band:
     return band
 
 
+def _max_workers() -> int:
+    max_processes = os.environ.get("SENTINEL2_NDVI_MAX_PROCESSES")
+    if max_processes is not None:
+        return int(max_processes)
+
+    cpu_count = os.cpu_count()
+    if cpu_count is None:
+        return 1
+
+    # Default to half the number of cores, to avoid using too much memory.
+    return cpu_count // 2
+
+
+_pool = ProcessPoolExecutor(max_workers=_max_workers())
+
+
 @dataclass
 class NDVIRastersBase:
     crs: str
@@ -244,32 +260,31 @@ def build_ndvi_rasters_for_crs(
         crop_to_projected = crop_to.clip(crs_area_of_use.bounds).to_crs(crs)
 
     with TemporaryDirectory() as tmpdir:
-        with ProcessPoolExecutor() as pool:
-            background_jobs = []
-            processed_datatakes = set()
-            for datatake, datatake_raster_paths in groupby(
-                raster_paths,
-                lambda path: SafeMetadata.from_filename(path).datatake_timestamp,
-            ):
-                # Input rasters should be sorted by datatake, so we can process
-                # them lazily one datatake at a time:
-                if datatake in processed_datatakes:
-                    raise ValueError(
-                        f"Datatake already processed: {datatake}. Pass in sorted order."
-                    )
-
-                processed_datatakes.add(datatake)
-
-                future = pool.submit(
-                    build_and_save_ndvi_raster_for_datatake,
-                    tmpdir,
-                    datatake,
-                    list(datatake_raster_paths),
-                    crop_to_projected,
+        background_jobs = []
+        processed_datatakes = set()
+        for datatake, datatake_raster_paths in groupby(
+            raster_paths,
+            lambda path: SafeMetadata.from_filename(path).datatake_timestamp,
+        ):
+            # Input rasters should be sorted by datatake, so we can process
+            # them lazily one datatake at a time:
+            if datatake in processed_datatakes:
+                raise ValueError(
+                    f"Datatake already processed: {datatake}. Pass in sorted order."
                 )
-                background_jobs.append(future)
 
-            ndvi_raster_paths = [future.result() for future in background_jobs]
+            processed_datatakes.add(datatake)
+
+            future = _pool.submit(
+                build_and_save_ndvi_raster_for_datatake,
+                tmpdir,
+                datatake,
+                list(datatake_raster_paths),
+                crop_to_projected,
+            )
+            background_jobs.append(future)
+
+        ndvi_raster_paths = [future.result() for future in background_jobs]
 
         for statistic in statistics:
             print(f"Calculating {statistic} NDVI raster in {crs}")
