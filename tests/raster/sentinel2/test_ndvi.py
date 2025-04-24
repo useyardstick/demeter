@@ -2,7 +2,8 @@ import geopandas
 import pytest
 import rasterio.transform
 
-from demeter.raster.sentinel2.ndvi import fetch_and_build_ndvi_rasters
+from demeter.raster import Raster
+from demeter.raster.sentinel2.ndvi import NDVIRasters, fetch_and_build_ndvi_rasters
 
 SEARCH_RESPONSES_FIXTURE_DIR = "tests/fixtures/recorded_responses"
 
@@ -23,17 +24,34 @@ def geometries_spanning_datatake_edge():
     return geopandas.read_file("tests/fixtures/texas_west.geojson")
 
 
+@pytest.mark.parametrize("save_to_disk", (False, True))
 def test_fetch_and_build_ndvi_rasters(
     geometries,
     record_or_replay_requests,
     use_sentinel2_fixtures,
+    save_to_disk,
+    tmp_path,
 ):
     use_sentinel2_fixtures(crop_to=geometries)
 
-    rasters = list(fetch_and_build_ndvi_rasters(geometries, 2024, 9))
+    rasters = list(
+        fetch_and_build_ndvi_rasters(
+            geometries, 2024, 9, dst_path=str(tmp_path) if save_to_disk else None
+        )
+    )
     assert len(rasters) == 1  # geometries are all in UTM zone 14
 
     raster = rasters[0]
+
+    if save_to_disk:
+        raster = NDVIRasters(
+            crs=raster.crs,
+            mean=Raster.from_file(raster.mean),
+            min=Raster.from_file(raster.min),
+            max=Raster.from_file(raster.max),
+            stddev=Raster.from_file(raster.stddev),
+        )
+
     assert raster.crs == "EPSG:32614"
     assert raster.mean
 

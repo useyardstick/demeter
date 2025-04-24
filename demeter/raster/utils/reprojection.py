@@ -98,7 +98,7 @@ def reproject(
         destination,
         src_crs=raster.crs,
         src_transform=raster.transform,
-        src_nodata=raster.pixels.fill_value,
+        src_nodata=raster.nodata,
         dst_crs=crs,
         dst_transform=dst_transform,
         resampling=rasterio.enums.Resampling[resampling_method],
@@ -107,9 +107,7 @@ def reproject(
 
     # `rasterio.warp.reproject` doesn't return a masked array, even with
     # `masked=True`. See https://github.com/rasterio/rasterio/pull/3289
-    pixels = numpy.ma.masked_equal(
-        pixels, raster.pixels.fill_value.astype(pixels.dtype)
-    )
+    pixels = numpy.ma.masked_equal(pixels, raster.nodata.astype(pixels.dtype))
 
     return Raster(pixels, transform, crs)
 

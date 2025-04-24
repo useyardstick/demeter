@@ -55,15 +55,28 @@ RASTER_CRS = "EPSG:5070"
 
 
 @dataclass
-class USGSHydrographyRaster:
+class USGSHydrographyRasterBase:
+    raster_filename: str
+    counts: Mapping[int, int]
+
+
+@dataclass
+class USGSHydrographyRaster(USGSHydrographyRasterBase):
     """
     A `Raster` instance containing the USGS hydrography raster, and a dict
     mapping of pixel counts from the sidecar DBF file.
     """
 
-    raster_filename: str
     raster: Raster
-    counts: Mapping[int, int]
+
+
+@dataclass
+class USGSHydrographyRasterOnDisk(USGSHydrographyRasterBase):
+    """
+    Same as `USGSHydrographyRaster`, but the raster is stored on disk.
+    """
+
+    raster_path: str
 
 
 class MissingCatchmentIDWarning(Warning):
@@ -74,7 +87,9 @@ class MissingCatchmentIDWarning(Warning):
 def fetch_and_merge_rasters(
     raster_filename: str,
     geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    *,
     crop: bool = True,
+    dst_path: None = None,
 ) -> USGSHydrographyRaster: ...
 
 
@@ -82,15 +97,39 @@ def fetch_and_merge_rasters(
 def fetch_and_merge_rasters(
     raster_filename: list[str],
     geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    *,
     crop: bool = True,
+    dst_path: None = None,
 ) -> Iterable[USGSHydrographyRaster]: ...
+
+
+@overload
+def fetch_and_merge_rasters(
+    raster_filename: str,
+    geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    *,
+    crop: bool = True,
+    dst_path: str,
+) -> USGSHydrographyRasterOnDisk: ...
+
+
+@overload
+def fetch_and_merge_rasters(
+    raster_filename: list[str],
+    geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    *,
+    crop: bool = True,
+    dst_path: str,
+) -> Iterable[USGSHydrographyRasterOnDisk]: ...
 
 
 def fetch_and_merge_rasters(
     raster_filename: Union[str, list[str]],
     geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    *,
     crop: bool = True,
-):
+    dst_path: Optional[str] = None,
+) -> Union[USGSHydrographyRasterBase, Iterable[USGSHydrographyRasterBase]]:
     """
     Fetch the given raster (e.g. "cat.tif") from USGS for the given geometries.
     If the geometries span multiple HU4 regions, fetch all the necessary
@@ -105,18 +144,28 @@ def fetch_and_merge_rasters(
 
     If `crop` is True (the default), crop the output raster to the given
     geometries.
+
+    If `dst_path` is provided, save the output raster to the given path. Use
+    this for large geometries that don't fit in memory.
     """
     if isinstance(raster_filename, str):
-        return next(_fetch_and_merge_rasters([raster_filename], geometries, crop))
+        return next(
+            _fetch_and_merge_rasters(
+                [raster_filename], geometries, crop=crop, dst_path=dst_path
+            )
+        )
 
-    return _fetch_and_merge_rasters(raster_filename, geometries, crop)
+    return _fetch_and_merge_rasters(
+        raster_filename, geometries, crop=crop, dst_path=dst_path
+    )
 
 
 def _fetch_and_merge_rasters(
     raster_filenames: list[str],
     geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
     crop: bool = True,
-) -> Generator[USGSHydrographyRaster]:
+    dst_path: Optional[str] = None,
+) -> Generator[USGSHydrographyRasterBase]:
     if isinstance(geometries, str):
         geometries = geopandas.read_file(geometries)
 
@@ -129,6 +178,7 @@ def _fetch_and_merge_rasters(
             raster_filename,
             downloaded_archive_paths,
             crop_to=geometries.to_crs(RASTER_CRS) if crop else None,
+            dst_path=dst_path,
         )
 
 
@@ -136,7 +186,8 @@ def _extract_raster(
     raster_filename: str,
     archive_paths: Iterable[str],
     crop_to: Optional[Union[geopandas.GeoDataFrame, geopandas.GeoSeries]],
-) -> USGSHydrographyRaster:
+    dst_path: Optional[str] = None,
+) -> USGSHydrographyRasterBase:
     if crop_to is not None:
         assert str(crop_to.crs) == RASTER_CRS
 
@@ -271,9 +322,18 @@ def _extract_raster(
                         value, count = _extract_value_and_count_from_dbf_record(record)
                         counts[value] += count
 
-        merged = merge_and_crop_rasters(raster_paths, crop_to=crop_to)
+        if dst_path is None:
+            return USGSHydrographyRaster(
+                raster_filename,
+                counts,
+                merge_and_crop_rasters(raster_paths, crop_to=crop_to),
+            )
 
-    return USGSHydrographyRaster(raster_filename, merged, counts)
+        return USGSHydrographyRasterOnDisk(
+            raster_filename,
+            counts,
+            merge_and_crop_rasters(raster_paths, crop_to=crop_to, dst_path=dst_path),
+        )
 
 
 def fetch_rasters(

@@ -82,6 +82,13 @@ class Raster:
         """
         return self.pixels.dtype
 
+    @property
+    def nodata(self):
+        """
+        The raster's nodata value.
+        """
+        return self.pixels.fill_value
+
     def value_at(self, x: float, y: float):
         """
         Find the pixel corresponding to the given coordinates, and return its
@@ -141,7 +148,7 @@ class Raster:
             "count": self.count,
             "crs": self.crs,
             "dtype": self.dtype,
-            "nodata": self.pixels.fill_value,
+            "nodata": self.nodata,
             "transform": self.transform,
         }
 

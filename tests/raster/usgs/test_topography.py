@@ -2,6 +2,7 @@ import geopandas
 import pytest
 import rasterio.transform
 
+from demeter.raster import Raster
 from demeter.raster.usgs.topography import RASTER_CRS, fetch_and_merge_rasters
 
 
@@ -17,8 +18,15 @@ def geometries_different_pixel_grid():
 
 
 # TODO: save test fixtures
-def test_fetch_and_merge_rasters(geometries):
-    raster = fetch_and_merge_rasters(geometries)
+@pytest.mark.parametrize("filename", (None, "raster.tif"))
+def test_fetch_and_merge_rasters(geometries, tmp_path, filename):
+    if filename is None:
+        raster = fetch_and_merge_rasters(geometries)
+    else:
+        raster_path = str(tmp_path / filename)
+        fetch_and_merge_rasters(geometries, dst_path=raster_path)
+        raster = Raster.from_file(raster_path)
+
     assert raster.shape == (14934, 4791)
     assert raster.crs == "EPSG:4269"
     assert raster.pixels.count() == 6019

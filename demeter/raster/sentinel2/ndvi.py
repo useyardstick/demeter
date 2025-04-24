@@ -31,7 +31,7 @@ from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from itertools import groupby
 from tempfile import TemporaryDirectory
-from typing import Literal, Optional, Union, cast
+from typing import Literal, Optional, Union, cast, overload
 
 import geopandas
 import numpy
@@ -62,13 +62,65 @@ def _ndvi_band(value: str) -> Band:
     return band
 
 
+def _max_workers() -> int:
+    max_processes = os.environ.get("SENTINEL2_NDVI_MAX_PROCESSES")
+    if max_processes is not None:
+        return int(max_processes)
+
+    cpu_count = os.cpu_count()
+    if cpu_count is None:
+        return 1
+
+    # Default to half the number of cores, to avoid using too much memory.
+    return cpu_count // 2
+
+
+_pool = ProcessPoolExecutor(max_workers=_max_workers())
+
+
 @dataclass
-class NDVIRasters:
+class NDVIRastersBase:
     crs: str
+
+
+@dataclass
+class NDVIRasters(NDVIRastersBase):
     mean: Optional[Raster] = None
     min: Optional[Raster] = None
     max: Optional[Raster] = None
     stddev: Optional[Raster] = None
+
+
+@dataclass
+class NDVIRastersOnDisk(NDVIRastersBase):
+    mean: Optional[str] = None
+    min: Optional[str] = None
+    max: Optional[str] = None
+    stddev: Optional[str] = None
+
+
+@overload
+def fetch_and_build_ndvi_rasters(
+    geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    year: int,
+    month: int,
+    statistics: Optional[Collection[Literal["mean", "min", "max", "stddev"]]] = None,
+    *,
+    crop: bool = True,
+    dst_path: str,
+) -> Iterable[NDVIRastersOnDisk]: ...
+
+
+@overload
+def fetch_and_build_ndvi_rasters(
+    geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
+    year: int,
+    month: int,
+    statistics: Optional[Collection[Literal["mean", "min", "max", "stddev"]]] = None,
+    *,
+    crop: bool = True,
+    dst_path: None = None,
+) -> Iterable[NDVIRasters]: ...
 
 
 def fetch_and_build_ndvi_rasters(
@@ -76,8 +128,10 @@ def fetch_and_build_ndvi_rasters(
     year: int,
     month: int,
     statistics: Optional[Collection[Literal["mean", "min", "max", "stddev"]]] = None,
+    *,
     crop: bool = True,
-) -> Iterable[NDVIRasters]:
+    dst_path: Optional[str] = None,
+) -> Iterable[Union[NDVIRasters, NDVIRastersOnDisk]]:
     """
     Download red and NIR reflectance rasters from Sentinel-2 for the given
     geometries over the given month, use them to calculate NDVI, and merge the
@@ -86,6 +140,9 @@ def fetch_and_build_ndvi_rasters(
     If `crop` is True (the default), crop the output raster to the given
     geometries. If `crop` if False, the output raster will cover the extent of
     the Sentinel-2 rasters intersecting with the given geometries.
+
+    If `dst_path` is given, NDVI rasters will be saved to that directory. Use
+    this for large geometries that don't fit in memory.
     """
     if isinstance(geometries, str):
         geometries = geopandas.read_file(geometries)
@@ -107,7 +164,10 @@ def fetch_and_build_ndvi_rasters(
         ],
     )
     return fetch_and_build_ndvi_rasters_from_keys(
-        raster_keys, statistics, crop_to=geometries if crop else None
+        raster_keys,
+        statistics,
+        crop_to=geometries if crop else None,
+        dst_path=dst_path,
     )
 
 
@@ -115,7 +175,8 @@ def fetch_and_build_ndvi_rasters_from_keys(
     raster_keys: Iterable[str],
     statistics: Optional[Collection[Literal["mean", "min", "max", "stddev"]]] = None,
     crop_to: Optional[Union[geopandas.GeoDataFrame, geopandas.GeoSeries]] = None,
-) -> Iterable[NDVIRasters]:
+    dst_path: Optional[str] = None,
+) -> Iterable[Union[NDVIRasters, NDVIRastersOnDisk]]:
     """
     Download the given rasters, use them to calculate NDVI, and merge the NDVI
     rasters together per the requested statistics.
@@ -145,7 +206,9 @@ def fetch_and_build_ndvi_rasters_from_keys(
     for crs, raster_paths in groupby(
         download_paths, lambda path: SafeMetadata.from_filename(path).crs
     ):
-        yield build_ndvi_rasters_for_crs(crs, raster_paths, statistics, crop_to)
+        yield build_ndvi_rasters_for_crs(
+            crs, raster_paths, statistics, crop_to, dst_path
+        )
 
 
 def build_ndvi_rasters_for_crs(
@@ -153,7 +216,8 @@ def build_ndvi_rasters_for_crs(
     raster_paths: Iterable[str],
     statistics: Optional[Collection[Literal["mean", "min", "max", "stddev"]]] = None,
     crop_to: Optional[Union[geopandas.GeoDataFrame, geopandas.GeoSeries]] = None,
-) -> NDVIRasters:
+    dst_path: Optional[str] = None,
+) -> Union[NDVIRasters, NDVIRastersOnDisk]:
     """
     Build NDVI rasters for each datatake, then merge them together according to
     the requested statistic.
@@ -175,7 +239,15 @@ def build_ndvi_rasters_for_crs(
 
     print(f"Building {statistics} NDVI rasters for {crs}")
 
-    rasters = NDVIRasters(crs=crs)
+    if dst_path is None:
+        rasters: Union[NDVIRasters, NDVIRastersOnDisk] = NDVIRasters(crs=crs)
+    else:
+        try:
+            os.mkdir(dst_path)
+        except FileExistsError:
+            pass
+        os.mkdir(os.path.join(dst_path, crs))
+        rasters = NDVIRastersOnDisk(crs=crs)
 
     if crop_to is None:
         crop_to_projected = None
@@ -188,48 +260,56 @@ def build_ndvi_rasters_for_crs(
         crop_to_projected = crop_to.clip(crs_area_of_use.bounds).to_crs(crs)
 
     with TemporaryDirectory() as tmpdir:
-        with ProcessPoolExecutor() as pool:
-            background_jobs = []
-            processed_datatakes = set()
-            for datatake, datatake_raster_paths in groupby(
-                raster_paths,
-                lambda path: SafeMetadata.from_filename(path).datatake_timestamp,
-            ):
-                # Input rasters should be sorted by datatake, so we can process
-                # them lazily one datatake at a time:
-                if datatake in processed_datatakes:
-                    raise ValueError(
-                        f"Datatake already processed: {datatake}. Pass in sorted order."
-                    )
-
-                processed_datatakes.add(datatake)
-
-                future = pool.submit(
-                    build_and_save_ndvi_raster_for_datatake,
-                    tmpdir,
-                    datatake,
-                    list(datatake_raster_paths),
-                    crop_to_projected,
+        background_jobs = []
+        processed_datatakes = set()
+        for datatake, datatake_raster_paths in groupby(
+            raster_paths,
+            lambda path: SafeMetadata.from_filename(path).datatake_timestamp,
+        ):
+            # Input rasters should be sorted by datatake, so we can process
+            # them lazily one datatake at a time:
+            if datatake in processed_datatakes:
+                raise ValueError(
+                    f"Datatake already processed: {datatake}. Pass in sorted order."
                 )
-                background_jobs.append(future)
 
-            ndvi_raster_paths = [future.result() for future in background_jobs]
+            processed_datatakes.add(datatake)
+
+            future = _pool.submit(
+                build_and_save_ndvi_raster_for_datatake,
+                tmpdir,
+                datatake,
+                list(datatake_raster_paths),
+                crop_to_projected,
+            )
+            background_jobs.append(future)
+
+        ndvi_raster_paths = [future.result() for future in background_jobs]
 
         for statistic in statistics:
             print(f"Calculating {statistic} NDVI raster in {crs}")
             merged_ndvi_raster = merge(
-                ndvi_raster_paths, method=statistic, allow_resampling=False
+                ndvi_raster_paths,
+                method=statistic,
+                allow_resampling=False,
+                dst_path=(
+                    os.path.join(dst_path, crs, f"{statistic}.tif")
+                    if dst_path
+                    else None
+                ),
             )
-            assert merged_ndvi_raster.crs == crs
             setattr(rasters, statistic, merged_ndvi_raster)
 
         if calculate_stddev:
             print(f"Calculating standard deviation NDVI raster in {crs}")
             assert rasters.mean
             stddev_ndvi_raster = merge_stddev(
-                ndvi_raster_paths, rasters.mean, allow_resampling=False
+                ndvi_raster_paths,
+                rasters.mean,
+                dst_path=(
+                    os.path.join(dst_path, crs, "stddev.tif") if dst_path else None
+                ),
             )
-            assert stddev_ndvi_raster.crs == crs
             rasters.stddev = stddev_ndvi_raster
 
     return rasters
