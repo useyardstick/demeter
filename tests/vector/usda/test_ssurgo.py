@@ -11,6 +11,16 @@ def geometries():
     return geopandas.read_file("tests/fixtures/central_valley.geojson")
 
 
+@pytest.fixture
+def corrupt_field():
+    # the data returned from SSURGO for this field includes a duplicate in the parent_materials column
+    return geopandas.read_file("tests/fixtures/field_corrupt.geojson")
+
+
+def test_fetch_primary_soil_components_corrupt_field(corrupt_field):
+    fetch_primary_soil_components(corrupt_field, bottom_depth_cm=50)
+
+
 def test_fetch_primary_soil_components(record_or_replay_requests, geometries):
     primary_soil_components = fetch_primary_soil_components(
         geometries, bottom_depth_cm=100
