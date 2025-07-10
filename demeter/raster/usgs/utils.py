@@ -20,6 +20,7 @@ def download_from_s3(key: str) -> str:
     os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
     with FileLock(f"{local_path}.lock", timeout=60):
+        print(f"Seeking info on s3://{S3_BUCKET_NAME}/{key}")
         if os.path.exists(local_path):
             # TODO: check if file in cache is stale
             print(f"Cache hit: {local_path}")
