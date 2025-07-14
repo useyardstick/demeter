@@ -6,3 +6,5 @@ build/
 .polaris_cache
 .sentinel2_cache
 .usgs_cache
+.venv*
+.env

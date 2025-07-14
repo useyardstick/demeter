@@ -16,7 +16,11 @@ from sqlalchemy.dialects import mssql
 SOIL_DATA_ACCESS_API_URL = "https://sdmdataaccess.sc.egov.usda.gov/tabular/post.rest"
 
 SQL_DIALECT = mssql.dialect()
-
+# 1. Find the correct map unit (ie. raster) keys (eg the unique keys that intersect with the geometries given)
+# 2. Add map unit symbol and name to the table with map unit keys
+# 3. Find the primary components (eg. the pixels in the raster) for each map unit, along with their info
+# 4. Add parent material to the table
+# 5. Order by map unit key
 PRIMARY_COMPONENTS_SQL = """
 WITH
   intersecting_geometries AS (
@@ -148,6 +152,30 @@ def fetch_primary_soil_components(
         geometry=geopandas.GeoSeries.from_wkt(primary_components.geometry),
         crs="EPSG:4326",
     )
+    if primary_components.duplicated(
+        subset=[
+            "geometry",
+            "map_unit_key",
+            "map_unit_symbol",
+            "map_unit_name",
+            "component_key",
+            "component_percent",
+            "component_name",
+            "component_kind",
+            "drainage_class",
+            "taxonomic_class",
+            "taxonomic_order",
+        ]
+    ).any():
+        # The parent_material table had duplicate values for component_key
+        warning = f"The parent_material table had duplicate values for component_key(s) {primary_components.component_key[primary_components.duplicated(subset=['component_key'])].values}"
+        warning = warning + "dropping duplicates."
+        print("WARNING: " + warning)
+        # TODO: Log this when logging is set up
+
+        primary_components = primary_components.drop_duplicates(
+            subset=["component_key"], keep="first"
+        )
 
     # Fetch horizons for each primary component, and aggregate them over the
     # requested depth range:
