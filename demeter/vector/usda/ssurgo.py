@@ -62,11 +62,15 @@ WITH
   )
 SELECT
   primary_components.*,
-  pmgroupname AS parent_material
+  pmgroupname AS parent_material,
+  taxminalogy AS mineralogy,
+  brockdepmin AS minimum_bedrock_depth_cm
 FROM
   primary_components
   LEFT JOIN copmgrp ON copmgrp.cokey = primary_components.component_key
   AND copmgrp.rvindicator = 'Yes'
+  LEFT JOIN cotaxfmmin ON cotaxfmmin.cokey = primary_components.component_key
+  LEFT JOIN muaggatt ON muaggatt.mukey = primary_components.map_unit_key
 ORDER BY
   map_unit_key
 """
