@@ -145,41 +145,7 @@ def fetch_primary_soil_components(
 
     # First, find the primary components for the map units intersecting with
     # the given geometries:
-    geometries_combined = geometries.geometry.union_all()
-    primary_components = _send_query(
-        PRIMARY_COMPONENTS_SQL,
-        wkt=geometries_combined.wkt,
-        epsg=geometries.crs.to_epsg(),
-    )
-    primary_components = geopandas.GeoDataFrame(
-        primary_components,
-        geometry=geopandas.GeoSeries.from_wkt(primary_components.geometry),
-        crs="EPSG:4326",
-    )
-    if primary_components.duplicated(
-        subset=[
-            "geometry",
-            "map_unit_key",
-            "map_unit_symbol",
-            "map_unit_name",
-            "component_key",
-            "component_percent",
-            "component_name",
-            "component_kind",
-            "drainage_class",
-            "taxonomic_class",
-            "taxonomic_order",
-        ]
-    ).any():
-        # The parent_material table had duplicate values for component_key
-        warning = f"The parent_material table had duplicate values for component_key(s) {primary_components.component_key[primary_components.duplicated(subset=['component_key'])].values}"
-        warning = warning + "dropping duplicates."
-        print("WARNING: " + warning)
-        # TODO: Log this when logging is set up
-
-        primary_components = primary_components.drop_duplicates(
-            subset=["component_key"], keep="first"
-        )
+    primary_components = _fetch_and_aggregate_primary_soil_components(geometries)
 
     # Fetch horizons for each primary component, and aggregate them over the
     # requested depth range:
@@ -242,6 +208,62 @@ def _compile_sql(sql: str, *binds, **params) -> str:
             dialect=SQL_DIALECT,
         )
     )
+
+
+def _fetch_and_aggregate_primary_soil_components(
+    geometries: Union[geopandas.GeoDataFrame, geopandas.GeoSeries],
+) -> geopandas.GeoDataFrame:
+    geometries_combined = geometries.geometry.union_all()
+
+    primary_components = _send_query(
+        PRIMARY_COMPONENTS_SQL,
+        wkt=geometries_combined.wkt,
+        epsg=geometries.crs.to_epsg(),
+    )
+    primary_components = geopandas.GeoDataFrame(
+        primary_components,
+        geometry=geopandas.GeoSeries.from_wkt(primary_components.geometry),
+        crs="EPSG:4326",
+    )
+
+    if primary_components.duplicated(
+        subset=[
+            "geometry",
+            "map_unit_key",
+            "map_unit_symbol",
+            "map_unit_name",
+            "component_key",
+            "component_percent",
+            "component_name",
+            "component_kind",
+            "drainage_class",
+            "taxonomic_class",
+            "taxonomic_order",
+            "minimum_bedrock_depth_cm",
+            "mineralogy",
+        ]
+    ).any():
+        # The parent_material table had component_key entries with differing "parent_material" values
+        duplicate_keys = primary_components.component_key[
+            primary_components.duplicated(subset=["component_key"])
+        ]
+        # append novel "parent_material" values and delete the extra row
+        for i, v in zip(duplicate_keys.index, duplicate_keys.values):
+            duplicated_components = primary_components[
+                primary_components["component_key"] == v
+            ]["parent_material"]
+            for j, pm in duplicated_components.items():
+                if j != i:
+                    # append duplicate values
+                    primary_components.at[i, "parent_material"] += ";" + pm
+                    # remove extra row from primary_components
+                    print(
+                        f"Found duplicate component_key: {v}, appending to row {i} and dropping row {j}"
+                    )
+                    primary_components = primary_components.drop(j)
+    # reset the index for ease of use
+    primary_components.reset_index(drop=True, inplace=True)
+    return primary_components
 
 
 def _fetch_and_aggregate_horizons_by_component(
