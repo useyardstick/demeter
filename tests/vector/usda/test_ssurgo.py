@@ -17,6 +17,36 @@ def corrupt_field():
     return geopandas.read_file("tests/fixtures/field_corrupt.geojson")
 
 
+@pytest.fixture
+def duplicate_parent_materials_field():
+    return geopandas.read_file("tests/fixtures/usa_schauer.geojson")
+
+
+@pytest.fixture
+def field_with_duplicate_primary_components():
+    return geopandas.read_file("tests/fixtures/usa_smith.geojson")
+
+
+def test_duplicate_parent_materials(duplicate_parent_materials_field):
+    primary_components = fetch_primary_soil_components(
+        duplicate_parent_materials_field, bottom_depth_cm=50
+    )
+    assert len(primary_components) == 99
+    assert ";" in primary_components["parent_material"].iloc[30]
+    assert ";" in primary_components["parent_material"].iloc[36]
+
+
+def test_field_with_duplicate_primary_components(
+    field_with_duplicate_primary_components,
+):
+    # contains a true duplicate across all columns
+    primary_components = fetch_primary_soil_components(
+        field_with_duplicate_primary_components, bottom_depth_cm=50
+    )
+    assert len(primary_components) == 72
+    assert ";" not in "".join(str(i) for i in primary_components["parent_material"])
+
+
 def test_fetch_primary_soil_components_corrupt_field(corrupt_field):
     fetch_primary_soil_components(corrupt_field, bottom_depth_cm=50)
 

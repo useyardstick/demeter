@@ -243,6 +243,8 @@ def _fetch_and_aggregate_primary_soil_components(
             "mineralogy",
         ]
     ).any():
+        # If the parent_material is also duplicated, drop the extra row (ie. this is a true duplicate)
+        primary_components = primary_components.drop_duplicates()
         # The parent_material table had component_key entries with differing "parent_material" values
         duplicate_keys = primary_components.component_key[
             primary_components.duplicated(subset=["component_key"])
@@ -255,7 +257,7 @@ def _fetch_and_aggregate_primary_soil_components(
             for j, pm in duplicated_components.items():
                 if j != i:
                     # append duplicate values
-                    primary_components.at[i, "parent_material"] += ";" + pm
+                    primary_components.at[i, "parent_material"] += "; " + pm
                     # remove extra row from primary_components
                     print(
                         f"Found duplicate component_key: {v}, appending to row {i} and dropping row {j}"
