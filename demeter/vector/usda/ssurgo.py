@@ -160,7 +160,7 @@ def fetch_primary_soil_components(
         how="left",
         on="component_key",
         validate="one_to_one",
-    )
+    )  # type: ignore
 
     # Use best possible dtypes. Exclude numeric types here, as matplotlib seems
     # to struggle with them:
@@ -265,6 +265,7 @@ def _fetch_and_aggregate_primary_soil_components(
                     primary_components = primary_components.drop(j)
     # reset the index for ease of use
     primary_components.reset_index(drop=True, inplace=True)
+    assert isinstance(primary_components, geopandas.GeoDataFrame)
     return primary_components
 
 
