@@ -3,7 +3,7 @@ Tools for fetching Soil Survey (SSURGO) data from USDA:
 https://www.nrcs.usda.gov/resources/data-and-reports/soil-survey-geographic-database-ssurgo
 """
 
-from typing import Union
+from typing import List, Union
 
 import geopandas
 import numpy
@@ -240,32 +240,47 @@ def _fetch_and_aggregate_primary_soil_components(
             "taxonomic_class",
             "taxonomic_order",
             "minimum_bedrock_depth_cm",
-            "mineralogy",
         ]
     ).any():
-        # If the parent_material is also duplicated, drop the extra row (ie. this is a true duplicate)
+        # If all columns are duplicated, drop the extra row (ie. this is a true duplicate)
         primary_components = primary_components.drop_duplicates()
-        # The parent_material table had component_key entries with differing "parent_material" values
-        duplicate_keys = primary_components.component_key[
+
+        assert isinstance(primary_components, geopandas.GeoDataFrame)
+        primary_components = _append_duplicates(
+            columns=["parent_material", "mineralogy"],
+            primary_components=primary_components,
+        )
+
+    assert isinstance(primary_components, geopandas.GeoDataFrame)
+    return primary_components
+
+
+def _append_duplicates(
+    columns: List[str], primary_components: geopandas.GeoDataFrame
+) -> geopandas.GeoDataFrame:
+
+    for col_name in columns:
+        # The col_name table had component_key entries with differing col_name values
+        duplicate_keys = primary_components["component_key"][
             primary_components.duplicated(subset=["component_key"])
         ]
         # append novel "parent_material" values and delete the extra row
         for i, v in zip(duplicate_keys.index, duplicate_keys.values):
             duplicated_components = primary_components[
                 primary_components["component_key"] == v
-            ]["parent_material"]
+            ][col_name]
             for j, pm in duplicated_components.items():
                 if j != i:
                     # append duplicate values
-                    primary_components.at[i, "parent_material"] += "; " + pm
+                    primary_components.at[i, col_name] += "; " + pm
                     # remove extra row from primary_components
                     print(
-                        f"Found duplicate component_key: {v}, appending to row {i} and dropping row {j}"
+                        f"Found duplicate component_key {v} for column {col_name}:, appending to row {i} and dropping row {j}"
                     )
                     primary_components = primary_components.drop(j)
-    # reset the index for ease of use
-    primary_components.reset_index(drop=True, inplace=True)
-    assert isinstance(primary_components, geopandas.GeoDataFrame)
+        # reset the index for ease of use
+        primary_components.reset_index(drop=True, inplace=True)
+
     return primary_components
 
 

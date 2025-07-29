@@ -1,4 +1,5 @@
 import geopandas
+import numpy as np
 import pandas
 import pytest
 from pandas.testing import assert_frame_equal
@@ -37,7 +38,7 @@ def test_duplicate_parent_materials(duplicate_parent_materials_field):
 
 
 def test_field_with_duplicate_primary_components(
-    field_with_duplicate_primary_components,
+    record_or_replay_requests, field_with_duplicate_primary_components
 ):
     # contains a true duplicate across all columns
     primary_components = fetch_primary_soil_components(
@@ -47,7 +48,9 @@ def test_field_with_duplicate_primary_components(
     assert ";" not in "".join(str(i) for i in primary_components["parent_material"])
 
 
-def test_fetch_primary_soil_components_corrupt_field(corrupt_field):
+def test_fetch_primary_soil_components_corrupt_field(
+    record_or_replay_requests, corrupt_field
+):
     fetch_primary_soil_components(corrupt_field, bottom_depth_cm=50)
 
 
@@ -187,6 +190,28 @@ def test_fetch_primary_soil_components(record_or_replay_requests, geometries):
                     "wind modified sandy alluvium derived from granite over silty alluvium derived from granite",
                     "alluvium derived from granite",
                     "alluvium derived from granite",
+                ],
+                "mineralogy": [
+                    "mixed",
+                    "mixed",
+                    "mixed",
+                    "mixed",
+                    "mixed (calcareous)",
+                    "mixed (calcareous)",
+                    "mixed (calcareous)",
+                    "mixed",
+                    "mixed",
+                ],
+                "minimum_bedrock_depth_cm": [
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    np.nan,
                 ],
                 "fine_fraction_percent_by_weight": [
                     97.0,
