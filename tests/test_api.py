@@ -1,5 +1,6 @@
 import geopandas
 import pytest
+from numpy import nan
 from pandas.testing import assert_frame_equal
 
 from demeter import api
@@ -76,6 +77,8 @@ def test_fetch_point_data(
                             "ssurgo_gravel_percent_by_weight": 0.0,
                             "ssurgo_fragment_percent_by_volume": None,
                             "ssurgo_fragment_kind": None,
+                            "ssurgo_mineralogy": "mixed",
+                            "ssurgo_minimum_bedrock_depth_cm": nan,
                         },
                     },
                     {
@@ -115,6 +118,8 @@ def test_fetch_point_data(
                             "ssurgo_gravel_percent_by_weight": 0.0,
                             "ssurgo_fragment_percent_by_volume": None,
                             "ssurgo_fragment_kind": None,
+                            "ssurgo_mineralogy": "mixed",
+                            "ssurgo_minimum_bedrock_depth_cm": nan,
                         },
                     },
                     {
@@ -154,6 +159,8 @@ def test_fetch_point_data(
                             "ssurgo_gravel_percent_by_weight": 6.0,
                             "ssurgo_fragment_percent_by_volume": 3.2,
                             "ssurgo_fragment_kind": "Carbonate nodules, Quartzite fragments",
+                            "ssurgo_mineralogy": "carbonatic",
+                            "ssurgo_minimum_bedrock_depth_cm": nan,
                         },
                     },
                 ],

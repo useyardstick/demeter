@@ -3,7 +3,7 @@ Tools for fetching Soil Survey (SSURGO) data from USDA:
 https://www.nrcs.usda.gov/resources/data-and-reports/soil-survey-geographic-database-ssurgo
 """
 
-from typing import Union
+from typing import List, Union
 
 import geopandas
 import numpy
@@ -62,11 +62,15 @@ WITH
   )
 SELECT
   primary_components.*,
-  pmgroupname AS parent_material
+  pmgroupname AS parent_material,
+  taxminalogy AS mineralogy,
+  brockdepmin AS minimum_bedrock_depth_cm
 FROM
   primary_components
   LEFT JOIN copmgrp ON copmgrp.cokey = primary_components.component_key
   AND copmgrp.rvindicator = 'Yes'
+  LEFT JOIN cotaxfmmin ON cotaxfmmin.cokey = primary_components.component_key
+  LEFT JOIN muaggatt ON muaggatt.mukey = primary_components.map_unit_key
 ORDER BY
   map_unit_key
 """
@@ -141,41 +145,7 @@ def fetch_primary_soil_components(
 
     # First, find the primary components for the map units intersecting with
     # the given geometries:
-    geometries_combined = geometries.geometry.union_all()
-    primary_components = _send_query(
-        PRIMARY_COMPONENTS_SQL,
-        wkt=geometries_combined.wkt,
-        epsg=geometries.crs.to_epsg(),
-    )
-    primary_components = geopandas.GeoDataFrame(
-        primary_components,
-        geometry=geopandas.GeoSeries.from_wkt(primary_components.geometry),
-        crs="EPSG:4326",
-    )
-    if primary_components.duplicated(
-        subset=[
-            "geometry",
-            "map_unit_key",
-            "map_unit_symbol",
-            "map_unit_name",
-            "component_key",
-            "component_percent",
-            "component_name",
-            "component_kind",
-            "drainage_class",
-            "taxonomic_class",
-            "taxonomic_order",
-        ]
-    ).any():
-        # The parent_material table had duplicate values for component_key
-        warning = f"The parent_material table had duplicate values for component_key(s) {primary_components.component_key[primary_components.duplicated(subset=['component_key'])].values}"
-        warning = warning + "dropping duplicates."
-        print("WARNING: " + warning)
-        # TODO: Log this when logging is set up
-
-        primary_components = primary_components.drop_duplicates(
-            subset=["component_key"], keep="first"
-        )
+    primary_components = _fetch_and_aggregate_primary_soil_components(geometries)
 
     # Fetch horizons for each primary component, and aggregate them over the
     # requested depth range:
@@ -190,7 +160,7 @@ def fetch_primary_soil_components(
         how="left",
         on="component_key",
         validate="one_to_one",
-    )
+    )  # type: ignore
 
     # Use best possible dtypes. Exclude numeric types here, as matplotlib seems
     # to struggle with them:
@@ -238,6 +208,80 @@ def _compile_sql(sql: str, *binds, **params) -> str:
             dialect=SQL_DIALECT,
         )
     )
+
+
+def _fetch_and_aggregate_primary_soil_components(
+    geometries: Union[geopandas.GeoDataFrame, geopandas.GeoSeries],
+) -> geopandas.GeoDataFrame:
+    geometries_combined = geometries.geometry.union_all()
+
+    primary_components = _send_query(
+        PRIMARY_COMPONENTS_SQL,
+        wkt=geometries_combined.wkt,
+        epsg=geometries.crs.to_epsg(),
+    )
+    primary_components = geopandas.GeoDataFrame(
+        primary_components,
+        geometry=geopandas.GeoSeries.from_wkt(primary_components.geometry),
+        crs="EPSG:4326",
+    )
+
+    if primary_components.duplicated(
+        subset=[
+            "geometry",
+            "map_unit_key",
+            "map_unit_symbol",
+            "map_unit_name",
+            "component_key",
+            "component_percent",
+            "component_name",
+            "component_kind",
+            "drainage_class",
+            "taxonomic_class",
+            "taxonomic_order",
+            "minimum_bedrock_depth_cm",
+        ]
+    ).any():
+        # If all columns are duplicated, drop the extra row (ie. this is a true duplicate)
+        primary_components = primary_components.drop_duplicates()
+
+        assert isinstance(primary_components, geopandas.GeoDataFrame)
+        primary_components = _append_duplicates(
+            columns=["parent_material", "mineralogy"],
+            primary_components=primary_components,
+        )
+
+    assert isinstance(primary_components, geopandas.GeoDataFrame)
+    return primary_components
+
+
+def _append_duplicates(
+    columns: List[str], primary_components: geopandas.GeoDataFrame
+) -> geopandas.GeoDataFrame:
+
+    for col_name in columns:
+        # The col_name table had component_key entries with differing col_name values
+        duplicate_keys = primary_components["component_key"][
+            primary_components.duplicated(subset=["component_key"])
+        ]
+        # append novel "parent_material" values and delete the extra row
+        for i, v in zip(duplicate_keys.index, duplicate_keys.values):
+            duplicated_components = primary_components[
+                primary_components["component_key"] == v
+            ][col_name]
+            for j, pm in duplicated_components.items():
+                if j != i:
+                    # append duplicate values
+                    primary_components.at[i, col_name] += "; " + pm
+                    # remove extra row from primary_components
+                    print(
+                        f"Found duplicate component_key {v} for column {col_name}:, appending to row {i} and dropping row {j}"
+                    )
+                    primary_components = primary_components.drop(j)
+        # reset the index for ease of use
+        primary_components.reset_index(drop=True, inplace=True)
+
+    return primary_components
 
 
 def _fetch_and_aggregate_horizons_by_component(
