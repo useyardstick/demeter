@@ -53294,3 +53294,19 @@ responses:
     method: POST
     status: 200
     url: https://sdmdataaccess.sc.egov.usda.gov/tabular/post.rest
+- response:
+    auto_calculate_content_length: false
+    body: '{"Table":[["horizon_key","rupture_moist","rupture_dry","rupture_cement","rupture_plate"],["77850921","Very
+      friable","Soft",null,null],["77850922","Loose","Loose",null,null]]}'
+    content_type: text/plain
+    headers:
+      Access-Control-Allow-Headers: Content-Type
+      Access-Control-Allow-Methods: GET,POST,OPTIONS
+      Access-Control-Allow-Origin: '*'
+      Cache-Control: private
+      Strict-Transport-Security: max-age=31536000; includeSubDomains
+      X-AspNet-Version: 4.0.30319
+      X-Powered-By: ASP.NET
+    method: POST
+    status: 200
+    url: https://sdmdataaccess.sc.egov.usda.gov/tabular/post.rest
