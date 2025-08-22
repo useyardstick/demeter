@@ -125,7 +125,7 @@ SELECT
 FROM
   chconsistence
 WHERE
-  chkey IN :horizon_keys
+  chkey IN :horizon_keys AND chconsistence.rvindicator = 'Yes'
 """
 
 

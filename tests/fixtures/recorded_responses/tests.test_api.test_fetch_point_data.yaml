@@ -10,8 +10,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: 0bce32c7-591a-4659-8306-49a77e4be5c7
-      x-envoy-upstream-service-time: '96'
+      request-id: 76457a07-f0bd-4025-801a-b2010ff1c01f
+      x-envoy-upstream-service-time: '95'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2713SGA%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+19%29&%24top=100
@@ -44,8 +44,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: 84e992cc-e903-46d5-b330-992db9022638
-      x-envoy-upstream-service-time: '96'
+      request-id: f620f4c9-7bc1-4b7e-a74a-1fe2446cc04c
+      x-envoy-upstream-service-time: '109'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2713SGA%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+55%29&%24top=100
@@ -60,8 +60,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: 566b3189-7247-4611-a74a-37860d023a90
-      x-envoy-upstream-service-time: '120'
+      request-id: 60de60f5-c29b-439c-8777-859f9a478ea3
+      x-envoy-upstream-service-time: '339'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2713SGA%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+62%29&%24top=100
@@ -76,8 +76,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: 463aab0c-1446-43ff-bc80-cb45ef09114b
-      x-envoy-upstream-service-time: '91'
+      request-id: c8d7617b-a212-4601-bacd-6d35cd0d6f71
+      x-envoy-upstream-service-time: '107'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2714SKF%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+19%29&%24top=100
@@ -110,8 +110,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: a87e88e0-5e3a-48dc-b5b8-6c605f4f4240
-      x-envoy-upstream-service-time: '305'
+      request-id: 9c3bf49c-d3a0-4832-99d0-f4c48fb28319
+      x-envoy-upstream-service-time: '107'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2714SKF%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+55%29&%24top=100
@@ -126,8 +126,8 @@ responses:
       Access-Control-Allow-Origin: '*'
       Access-Control-Max-Age: '1728000'
       Strict-Transport-Security: max-age=15724800; includeSubDomains
-      request-id: 6f3dabfb-bd44-42d9-b591-e1881525e802
-      x-envoy-upstream-service-time: '258'
+      request-id: ddabcbfc-a62d-4b99-a989-407ae50e327b
+      x-envoy-upstream-service-time: '95'
     method: GET
     status: 200
     url: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-2%27+and+ContentDate%2FStart+ge+2024-09-01+and+ContentDate%2FEnd+le+2024-09-30+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27productType%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%27S2MSI2A%27%29+and+Attributes%2FOData.CSC.StringAttribute%2Fany%28att%3Aatt%2FName+eq+%27tileId%27+and+att%2FOData.CSC.StringAttribute%2FValue+eq+%2714SKF%27%29+and+Attributes%2FOData.CSC.IntegerAttribute%2Fany%28att%3Aatt%2FName+eq+%27relativeOrbitNumber%27+and+att%2FOData.CSC.IntegerAttribute%2FValue+eq+62%29&%24top=100
@@ -139,13 +139,13 @@ responses:
     headers:
       Access-Control-Allow-Origin: '*'
       Cache-Control: max-age=0,must-revalidate
-      ETag: W/"1749506998"
+      ETag: W/"1751501840"
       Strict-Transport-Security: max-age=31536000; includeSubDomains
       Transfer-Encoding: chunked
       Vary: Accept-Encoding
-      Via: 1.1 d8defd690c445023198cdbef1992d5f4.cloudfront.net (CloudFront)
-      X-Amz-Cf-Id: F73djOIcSuToymOar_dfztf3NWbeczsHb6BZQqF7JOkroJtgotiapA==
-      X-Amz-Cf-Pop: ORD56-P2
+      Via: 1.1 0a1862604e58881ba35ec94cd1842652.cloudfront.net (CloudFront)
+      X-Amz-Cf-Id: krDr0qpiecq9tQPFvrrrAlGY1fPhiCZ9l7tuyjil7AJ59IzLXhUdVQ==
+      X-Amz-Cf-Pop: ORD58-P6
       X-Cache: Miss from cloudfront
       X-Content-Type-Options: nosniff
       X-Frame-Options: SAMEORIGIN
@@ -1041,6 +1041,22 @@ responses:
     body: '{"Table":[["horizon_key","fragment_percent_by_volume","fragment_size","fragment_kind"],["76486225","3","15","Quartzite
       fragments"],["76486225","2","5","Carbonate nodules"],["76486226","2","5","Carbonate
       nodules"]]}'
+    content_type: text/plain
+    headers:
+      Access-Control-Allow-Headers: Content-Type
+      Access-Control-Allow-Methods: GET,POST,OPTIONS
+      Access-Control-Allow-Origin: '*'
+      Cache-Control: private
+      Strict-Transport-Security: max-age=31536000; includeSubDomains
+      X-AspNet-Version: 4.0.30319
+      X-Powered-By: ASP.NET
+    method: POST
+    status: 200
+    url: https://sdmdataaccess.sc.egov.usda.gov/tabular/post.rest
+- response:
+    auto_calculate_content_length: false
+    body: '{"Table":[["horizon_key","rupture_moist","rupture_dry","rupture_cement","rupture_plate"],["76486225","Firm","Hard",null,null],["76486226","Friable","Slightly
+      hard",null,null]]}'
     content_type: text/plain
     headers:
       Access-Control-Allow-Headers: Content-Type
