@@ -115,6 +115,19 @@ WHERE
   chkey IN :horizon_keys
 """
 
+HORIZON_CONSISTENCE_SQL = """
+SELECT
+  chkey AS horizon_key,
+  rupresblkmst AS rupture_moist,
+  rupresblkdry AS rupture_dry,
+  rupresblkcem AS rupture_cement,
+  rupresplate AS rupture_plate
+FROM
+  chconsistence
+WHERE
+  chkey IN :horizon_keys AND chconsistence.rvindicator = 'Yes'
+"""
+
 
 def fetch_primary_soil_components(
     geometries: Union[str, geopandas.GeoDataFrame, geopandas.GeoSeries],
@@ -184,7 +197,7 @@ def _send_query(sql: str, *binds, **params) -> pandas.DataFrame:
         data={"query": compiled_sql, "format": "JSON+COLUMNNAME"},
     )
     response.raise_for_status()
-    columns, *rows = response.json()["Table"]
+    columns, *rows = response.json().get("Table", ([], []))
     dataframe = pandas.DataFrame(rows, columns=columns)
 
     # The API returns numeric values as strings. Convert them to numeric dtype:
@@ -310,6 +323,19 @@ def _fetch_and_aggregate_horizons_by_component(
         )
         .reset_index()
     )
+
+    horizon_consistence = _send_query(
+        HORIZON_CONSISTENCE_SQL,
+        bindparam("horizon_keys", horizon_keys, expanding=True),
+    )
+    if not horizon_consistence.empty:
+        horizons = horizons.merge(
+            horizon_consistence,
+            how="left",
+            on="horizon_key",
+            validate="one_to_one",
+        )
+
     horizons = horizons.merge(
         fragments_aggregated,
         how="left",
@@ -319,8 +345,17 @@ def _fetch_and_aggregate_horizons_by_component(
 
     # Aggregate each soil property across all the horizons using a
     # depth-weighted average:
+    string_based_columns = [
+        "fragment_kind",
+        "rupture_moist",
+        "rupture_dry",
+        "rupture_cement",
+        "rupture_plate",
+    ]
+    string_based_columns = [col for col in string_based_columns if col in horizons]
+    horizons = horizons.fillna({col: "" for col in string_based_columns})
     columns_to_aggregate = horizons.columns.difference(
-        ["component_key", "fragment_kind"], sort=False
+        ["component_key"] + string_based_columns, sort=False
     )
     horizons_aggregated = horizons.groupby("component_key")[columns_to_aggregate].apply(
         _depth_weighted_average,  # type: ignore
@@ -332,7 +367,7 @@ def _fetch_and_aggregate_horizons_by_component(
     # single string:
     fragment_kinds_aggregated = (
         horizons[horizons["fragment_kind"].notna()]
-        .groupby("component_key")["fragment_kind"]
+        .groupby("component_key")[string_based_columns]
         .agg(_concat_unique_values)
     )
 
